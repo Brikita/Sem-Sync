@@ -70,7 +70,27 @@ export default function TimetablePage() {
         </button>
       </div>
 
-      <div className="rounded-xl border bg-card p-4 shadow text-card-foreground">
+      <div className="rounded-xl border bg-card p-4 shadow-sm text-card-foreground overflow-hidden">
+        <style>{`
+          .fc .fc-toolbar.fc-header-toolbar {
+            margin-bottom: 1.5em;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            justify-content: space-between;
+            align-items: center;
+          }
+          @media (max-width: 640px) {
+            .fc .fc-toolbar.fc-header-toolbar {
+              flex-direction: column;
+              align-items: stretch;
+            }
+            .fc-toolbar-chunk:nth-child(2) {
+              order: -1; 
+              margin-bottom: 0.5rem;
+            }
+          }
+        `}</style>
         <FullCalendar
           ref={calendarRef}
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
