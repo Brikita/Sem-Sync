@@ -1,12 +1,21 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "./lib/firebase";
 import { getUserProfile } from "./lib/auth";
 import { useAuthStore } from "./store/authStore";
+
+// Pages
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/auth/LoginPage";
 import RegisterPage from "./pages/auth/RegisterPage";
+import DashboardPage from "./pages/dashboard/DashboardPage";
+import TimetablePage from "./pages/dashboard/TimetablePage";
+import TasksPage from "./pages/dashboard/TasksPage";
+
+// Layouts & Auth
+import DashboardLayout from "./components/layout/DashboardLayout";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 function App() {
   const { setUser, setIsLoading } = useAuthStore();
@@ -34,9 +43,26 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Public Routes */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+
+        {/* Protected Routes (Dashboard) */}
+        <Route element={<ProtectedRoute />}>
+          <Route element={<DashboardLayout />}>
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/timetable" element={<TimetablePage />} />
+            <Route path="/tasks" element={<TasksPage />} />
+            <Route
+              path="/notebook"
+              element={<div>Notebook (Coming Soon)</div>}
+            />
+          </Route>
+        </Route>
+
+        {/* Catch all - Redirect to 404 or Home */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );
