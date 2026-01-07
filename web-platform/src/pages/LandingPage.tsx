@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 export default function LandingPage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground">
@@ -14,21 +16,27 @@ export default function LandingPage() {
         <h1 className="text-6xl font-black tracking-tighter sm:text-7xl md:text-8xl">
           Sem<span className="text-primary">Sync</span>
         </h1>
-
+        
         <p className="max-w-[42rem] leading-normal text-muted-foreground sm:text-xl sm:leading-8">
-          The central academic hub for students and instructors. Manage
-          schedules, track deadlines, and collaborate in real-time.
+          The central academic hub for students and instructors. 
+          Manage schedules, track deadlines, and collaborate in real-time.
         </p>
 
         <div className="flex gap-4">
-          <button className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-8 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+          <Link 
+            to="/register"
+            className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-8 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
             Get Started
-          </button>
-          <button className="inline-flex h-10 items-center justify-center rounded-md border border-input bg-transparent px-8 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-            Learn More
-          </button>
+          </Link>
+          <Link
+            to="/login"
+            className="inline-flex h-10 items-center justify-center rounded-md border border-input bg-transparent px-8 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            Sign In
+          </Link>
         </div>
       </main>
     </div>
-  );
+  )
 }
