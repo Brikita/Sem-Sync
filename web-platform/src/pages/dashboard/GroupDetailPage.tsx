@@ -7,6 +7,8 @@ import {
   subscribeToPosts,
   createPost,
   type GroupPost,
+  subscribeToUnits,
+  type AcademicUnit,
 } from "../../lib/groups";
 import {
   ArrowLeft,
@@ -15,20 +17,50 @@ import {
   Shield,
   MessageSquare,
   Send,
+  BookOpen,
+  Calendar,
+  Clock,
+  MapPin,
 } from "lucide-react";
 import { useAuthStore } from "../../store/authStore";
 import { formatDistanceToNow } from "date-fns";
+import { AddUnitDialog } from "../../components/groups/GroupDialogs";
 
 export default function GroupDetailPage() {
   const { groupId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const [group, setGroup] = useState<AcademicGroup | null>(null);
+
+  // Tabs: 'feed' | 'units'
+  const [activeTab, setActiveTab] = useState<"feed" | "units">("feed");
+
+  // Data
   const [posts, setPosts] = useState<GroupPost[]>([]);
+  const [units, setUnits] = useState<AcademicUnit[]>([]);
+
+  // Loading states
   const [postsLoading, setPostsLoading] = useState(true);
-  const [newPost, setNewPost] = useState("");
-  const [isPosting, setIsPosting] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Post Form State
+  const [newPost, setNewPost] = useState("");
+  const [selectedUnitId, setSelectedUnitId] = useState<string>("");
+  const [isAssessment, setIsAssessment] = useState(false);
+  const [examDate, setExamDate] = useState("");
+  const [isPosting, setIsPosting] = useState(false);
+
+  // Dialogs
+  const [isAddUnitOpen, setIsAddUnitOpen] = useState(false);
+
+  // Subscribe to Units
+  useEffect(() => {
+    if (!groupId) return;
+    const unsubscribe = subscribeToUnits(groupId, (data) => {
+      setUnits(data);
+    });
+    return () => unsubscribe();
+  }, [groupId]);
 
   // Subscribe to posts
   useEffect(() => {
@@ -71,14 +103,26 @@ export default function GroupDetailPage() {
 
     try {
       setIsPosting(true);
+
+      const unit = units.find((u) => u.id === selectedUnitId);
+
       await createPost(
         groupId,
         user.uid,
         user.displayName || "Student",
         newPost,
-        isRep ? "announcement" : "general"
+        isRep ? "announcement" : "general",
+        {
+          unitId: selectedUnitId || undefined,
+          unitName: unit?.name,
+          isAssessment: isAssessment,
+          eventDate: examDate ? new Date(examDate) : undefined,
+        }
       );
       setNewPost("");
+      setSelectedUnitId("");
+      setIsAssessment(false);
+      setExamDate("");
     } catch (error) {
       console.error("Failed to post:", error);
     } finally {
@@ -110,7 +154,7 @@ export default function GroupDetailPage() {
               )}
             </div>
             <p className="text-lg text-gray-600 mt-1">
-              {group.code} • {group.lecturerName}
+              {group.code} • {group.memberCount} Students
             </p>
           </div>
 
@@ -139,79 +183,253 @@ export default function GroupDetailPage() {
         </div>
       </div>
 
+      {/* Tabs */}
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+          <button
+            onClick={() => setActiveTab("feed")}
+            className={`${
+              activeTab === "feed"
+                ? "border-indigo-500 text-indigo-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2`}
+          >
+            <MessageSquare className="h-4 w-4" />
+            Discussion Feed
+          </button>
+          <button
+            onClick={() => setActiveTab("units")}
+            className={`${
+              activeTab === "units"
+                ? "border-indigo-500 text-indigo-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2`}
+          >
+            <BookOpen className="h-4 w-4" />
+            Units & Schedule
+          </button>
+        </nav>
+      </div>
+
       {/* Content Area */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Feed */}
+        {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Post Creator */}
-          <div className="bg-white rounded-lg border shadow-sm p-4">
-            <form onSubmit={handlePost} className="flex gap-4">
-              <div className="flex-1">
-                <input
-                  type="text"
-                  placeholder={
-                    isRep
-                      ? "Post an announcement..."
-                      : "Ask a question or share something..."
-                  }
-                  className="w-full px-4 py-2 bg-gray-50 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                  value={newPost}
-                  onChange={(e) => setNewPost(e.target.value)}
-                />
-              </div>
-              <button
-                disabled={isPosting || !newPost.trim()}
-                type="submit"
-                className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-indigo-600 text-white hover:bg-indigo-700 h-10 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Send className="h-4 w-4" />
-              </button>
-            </form>
-          </div>
+          {activeTab === "feed" && (
+            <>
+              {/* Post Creator */}
+              <div className="bg-white rounded-lg border shadow-sm p-4">
+                <form onSubmit={handlePost} className="space-y-3">
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <textarea
+                        placeholder={
+                          isRep
+                            ? "Post an announcement..."
+                            : "Ask a question..."
+                        }
+                        className="w-full px-4 py-2 bg-gray-50 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all resize-none h-20 text-sm"
+                        value={newPost}
+                        onChange={(e) => setNewPost(e.target.value)}
+                      />
+                    </div>
+                  </div>
 
-          {/* Posts List */}
-          <div className="space-y-4">
-            {postsLoading ? (
-              <div className="text-center py-8 text-gray-500">
-                Loading posts...
-              </div>
-            ) : posts.length === 0 ? (
-              <div className="bg-white rounded-lg border shadow-sm p-12 flex flex-col items-center justify-center text-gray-400 text-center">
-                <MessageSquare className="h-12 w-12 mb-3 opacity-20" />
-                <p>No posts yet. Start the conversation!</p>
-              </div>
-            ) : (
-              posts.map((post) => (
-                <div
-                  key={post.id}
-                  className="bg-white rounded-lg border shadow-sm p-4 transition-all hover:bg-gray-50/50"
-                >
-                  <div className="flex items-start justify-between mb-2">
+                  <div className="flex items-center gap-2 justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-gray-900">
-                        {post.authorName}
-                      </span>
-                      {post.type === "announcement" && (
-                        <span className="text-[10px] uppercase font-bold text-red-600 bg-red-50 border border-red-100 px-1.5 py-0.5 rounded">
-                          Announcement
-                        </span>
+                      {/* Unit Selector */}
+                      <select
+                        value={selectedUnitId}
+                        onChange={(e) => setSelectedUnitId(e.target.value)}
+                        className="h-8 text-xs border rounded bg-white px-2 focus:ring-2 focus:ring-indigo-500"
+                      >
+                        <option value="">General (All Cohort)</option>
+                        {units.map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.code} - {u.name}
+                          </option>
+                        ))}
+                      </select>
+
+                      {/* Assessment Toggle (Rep Only) */}
+                      {isRep && selectedUnitId && (
+                        <div className="flex items-center gap-2 pl-2 border-l">
+                          <label className="flex items-center gap-1 text-xs text-gray-700 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={isAssessment}
+                              onChange={(e) =>
+                                setIsAssessment(e.target.checked)
+                              }
+                              className="rounded text-indigo-600"
+                            />
+                            It's a CAT/Exam?
+                          </label>
+                          {isAssessment && (
+                            <input
+                              type="date"
+                              value={examDate}
+                              onChange={(e) => setExamDate(e.target.value)}
+                              className="h-7 text-xs border rounded px-1"
+                            />
+                          )}
+                        </div>
                       )}
                     </div>
-                    <span className="text-xs text-gray-500">
-                      {post.createdAt?.toMillis
-                        ? formatDistanceToNow(post.createdAt.toMillis(), {
-                            addSuffix: true,
-                          })
-                        : "Just now"}
-                    </span>
+
+                    <button
+                      disabled={isPosting || !newPost.trim()}
+                      type="submit"
+                      className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-indigo-600 text-white hover:bg-indigo-700 h-8 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Post
+                      <Send className="h-3 w-3 ml-2" />
+                    </button>
                   </div>
-                  <p className="text-gray-800 whitespace-pre-wrap leading-relaxed">
-                    {post.content}
+                </form>
+              </div>
+
+              {/* Posts List */}
+              <div className="space-y-4">
+                {postsLoading ? (
+                  <div className="text-center py-8 text-gray-500">
+                    Loading posts...
+                  </div>
+                ) : posts.length === 0 ? (
+                  <div className="bg-white rounded-lg border shadow-sm p-12 flex flex-col items-center justify-center text-gray-400 text-center">
+                    <MessageSquare className="h-12 w-12 mb-3 opacity-20" />
+                    <p>No posts yet. Start the conversation!</p>
+                  </div>
+                ) : (
+                  posts.map((post) => (
+                    <div
+                      key={post.id}
+                      className="bg-white rounded-lg border shadow-sm p-4 transition-all hover:bg-gray-50/50"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold text-gray-900">
+                            {post.authorName}
+                          </span>
+
+                          {/* Unit Tag */}
+                          {post.unitName && (
+                            <span className="text-[10px] font-medium text-indigo-600 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded flex items-center">
+                              <BookOpen className="h-3 w-3 mr-1" />
+                              {post.unitName}
+                            </span>
+                          )}
+
+                          {/* Assessment Tag */}
+                          {post.isAssessment && (
+                            <span className="text-[10px] font-bold text-orange-700 bg-orange-50 border border-orange-100 px-1.5 py-0.5 rounded flex items-center uppercase">
+                              <Calendar className="h-3 w-3 mr-1" />
+                              EXAM / CAT
+                            </span>
+                          )}
+
+                          {post.type === "announcement" &&
+                            !post.isAssessment && (
+                              <span className="text-[10px] uppercase font-bold text-red-600 bg-red-50 border border-red-100 px-1.5 py-0.5 rounded">
+                                Announcement
+                              </span>
+                            )}
+                        </div>
+                        <span className="text-xs text-gray-500 whitespace-nowrap">
+                          {post.createdAt?.toMillis
+                            ? formatDistanceToNow(post.createdAt.toMillis(), {
+                                addSuffix: true,
+                              })
+                            : "Just now"}
+                        </span>
+                      </div>
+                      <p className="text-gray-800 whitespace-pre-wrap leading-relaxed text-sm">
+                        {post.content}
+                      </p>
+                      {post.eventDate && (
+                        <div className="mt-3 p-2 bg-orange-50 border border-orange-100 rounded text-xs text-orange-800 flex items-center">
+                          <Clock className="h-3 w-3 mr-2" />
+                          <strong>Due Date:</strong>{" "}
+                          {new Date(
+                            post.eventDate.seconds * 1000
+                          ).toDateString()}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </>
+          )}
+
+          {activeTab === "units" && (
+            <div className="space-y-4">
+              {isRep && (
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => setIsAddUnitOpen(true)}
+                    className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-indigo-600 text-white hover:bg-indigo-700 h-9 px-4 py-2"
+                  >
+                    Add New Unit
+                  </button>
+                </div>
+              )}
+
+              {units.length === 0 ? (
+                <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-lg">
+                  <BookOpen className="mx-auto h-12 w-12 text-gray-300" />
+                  <h3 className="mt-2 text-sm font-semibold text-gray-900">
+                    No units added yet
+                  </h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Reps can add units to build the schedule.
                   </p>
                 </div>
-              ))
-            )}
-          </div>
+              ) : (
+                units.map((unit) => (
+                  <div
+                    key={unit.id}
+                    className="bg-white rounded-lg border shadow-sm p-4"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-bold text-gray-900">{unit.name}</h3>
+                        <p className="text-sm text-gray-500">
+                          {unit.code} • {unit.lecturerName}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-4 grid gap-2">
+                      <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        Schedule
+                      </h4>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {unit.schedule.map((slot, idx) => (
+                          <div
+                            key={idx}
+                            className="flex items-center gap-3 p-2 rounded bg-gray-50 text-sm border"
+                          >
+                            <div className="flex flex-col items-center justify-center w-10 h-10 rounded bg-white border shadow-sm font-bold text-indigo-600 text-xs">
+                              {slot.day.substring(0, 3)}
+                            </div>
+                            <div>
+                              <div className="font-medium">
+                                {slot.startTime} - {slot.endTime}
+                              </div>
+                              <div className="text-xs text-gray-500 flex items-center">
+                                <MapPin className="h-3 w-3 mr-1" />
+                                {slot.location || "No location"}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
         </div>
 
         {/* Sidebar */}
@@ -229,6 +447,13 @@ export default function GroupDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Dialogs */}
+      <AddUnitDialog
+        open={isAddUnitOpen}
+        onOpenChange={setIsAddUnitOpen}
+        groupId={groupId || ""}
+      />
     </div>
   );
 }

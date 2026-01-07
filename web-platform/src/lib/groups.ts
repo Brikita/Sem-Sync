@@ -14,23 +14,49 @@ import { db } from "./firebase";
 
 export interface AcademicGroup {
   id: string;
-  name: string; // e.g. "Software Engineering"
-  code: string; // e.g. "SE101"
-  joinCode: string; // Unique 6-char code for students to join
+  name: string; // e.g. "BSc Computer Science Y2"
+  code: string; // e.g. "CS-Y2"
+  joinCode: string;
+  // lecturerName is less relevant on the course level now, but we'll keep it for backward compat or Head of Dept
   lecturerName: string;
-  repId: string; // The creator/admin
+  repId: string;
   memberCount: number;
   createdAt: number;
+}
+
+export interface UnitSchedule {
+  day: string; // "Monday", "Tuesday"
+  startTime: string; // "08:00"
+  endTime: string; // "10:00"
+  location: string; // "Lab 1"
+}
+
+export interface AcademicUnit {
+  id: string;
+  groupId: string;
+  name: string; // "Distributed Systems"
+  code: string; // "SCT 211"
+  lecturerName: string;
+  schedule: UnitSchedule[];
 }
 
 export interface GroupPost {
   id: string;
   groupId: string;
   authorId: string;
-  authorName: string; // Cache name to reduce reads
+  authorName: string;
   content: string;
   type: "announcement" | "general";
-  createdAt: any; // Timestamp
+
+  // New fields for Unit context
+  unitId?: string;
+  unitName?: string;
+
+  // New fields for Assessments
+  isAssessment?: boolean;
+  eventDate?: any; // Timestamp of the exam/deadline
+
+  createdAt: any;
 }
 
 // Helper to generate random 6-char join code
@@ -121,7 +147,13 @@ export const createPost = async (
   userId: string,
   authorName: string,
   content: string,
-  type: "announcement" | "general" = "general"
+  type: "announcement" | "general" = "general",
+  additionalData: {
+    unitId?: string;
+    unitName?: string;
+    isAssessment?: boolean;
+    eventDate?: Date;
+  } = {}
 ) => {
   const postsRef = collection(db, "groups", groupId, "posts");
   await addDoc(postsRef, {
@@ -130,7 +162,41 @@ export const createPost = async (
     authorName,
     content,
     type,
+    ...additionalData,
     createdAt: serverTimestamp(),
+  });
+};
+
+// --- Unit Management ---
+
+export const createUnit = async (
+  groupId: string,
+  data: {
+    name: string;
+    code: string;
+    lecturerName: string;
+    schedule: UnitSchedule[];
+  }
+) => {
+  const unitsRef = collection(db, "groups", groupId, "units");
+  await addDoc(unitsRef, data);
+};
+
+export const subscribeToUnits = (
+  groupId: string,
+  callback: (units: AcademicUnit[]) => void
+) => {
+  const unitsRef = collection(db, "groups", groupId, "units");
+  return onSnapshot(unitsRef, (snapshot) => {
+    const units = snapshot.docs.map(
+      (doc) =>
+        ({
+          id: doc.id,
+          groupId,
+          ...doc.data(),
+        } as AcademicUnit)
+    );
+    callback(units);
   });
 };
 

@@ -1,7 +1,236 @@
 import { useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { createGroup, joinGroup } from "../../lib/groups";
+import {
+  createGroup,
+  joinGroup,
+  createUnit,
+  type UnitSchedule,
+} from "../../lib/groups";
 import { useAuthStore } from "../../store/authStore";
+import { Plus, Trash2 } from "lucide-react";
+
+interface AddUnitDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  groupId: string;
+}
+
+export function AddUnitDialog({
+  open,
+  onOpenChange,
+  groupId,
+}: AddUnitDialogProps) {
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    code: "",
+    lecturerName: "",
+  });
+  const [schedule, setSchedule] = useState<UnitSchedule[]>([
+    { day: "Monday", startTime: "08:00", endTime: "10:00", location: "" },
+  ]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setLoading(true);
+      await createUnit(groupId, { ...formData, schedule });
+      onOpenChange(false);
+      setFormData({ name: "", code: "", lecturerName: "" });
+      setSchedule([
+        { day: "Monday", startTime: "08:00", endTime: "10:00", location: "" },
+      ]);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateSchedule = (
+    index: number,
+    field: keyof UnitSchedule,
+    value: string
+  ) => {
+    const newSchedule = [...schedule];
+    newSchedule[index] = { ...newSchedule[index], [field]: value };
+    setSchedule(newSchedule);
+  };
+
+  return (
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm" />
+        <Dialog.Content className="fixed left-[50%] top-[50%] z-50 w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-white p-6 shadow-lg sm:rounded-lg max-h-[90vh] overflow-y-auto">
+          <Dialog.Title className="text-lg font-semibold">
+            Add New Unit
+          </Dialog.Title>
+          <Dialog.Description className="text-sm text-gray-500 mb-4">
+            Add a subject/module to this course.
+          </Dialog.Description>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium">Unit Name</label>
+                <input
+                  required
+                  placeholder="e.g. Dist. Systems"
+                  className="w-full border rounded p-2 text-sm"
+                  value={formData.name}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Unit Code</label>
+                <input
+                  required
+                  placeholder="e.g. SCT 211"
+                  className="w-full border rounded p-2 text-sm"
+                  value={formData.code}
+                  onChange={(e) =>
+                    setFormData({ ...formData, code: e.target.value })
+                  }
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium">Lecturer Name</label>
+              <input
+                required
+                placeholder="e.g. Dr. Lawrence"
+                className="w-full border rounded p-2 text-sm"
+                value={formData.lecturerName}
+                onChange={(e) =>
+                  setFormData({ ...formData, lecturerName: e.target.value })
+                }
+              />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <label className="text-sm font-medium">Class Schedule</label>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSchedule([
+                      ...schedule,
+                      {
+                        day: "Monday",
+                        startTime: "08:00",
+                        endTime: "10:00",
+                        location: "",
+                      },
+                    ])
+                  }
+                  className="text-xs flex items-center text-indigo-600 hover:underline"
+                >
+                  <Plus className="h-3 w-3 mr-1" /> Add Slot
+                </button>
+              </div>
+              {schedule.map((slot, index) => (
+                <div
+                  key={index}
+                  className="grid grid-cols-7 gap-2 items-end border p-2 rounded bg-gray-50"
+                >
+                  <div className="col-span-2">
+                    <label className="text-[10px] text-gray-500">Day</label>
+                    <select
+                      className="w-full text-xs p-1 border rounded"
+                      value={slot.day}
+                      onChange={(e) =>
+                        updateSchedule(index, "day", e.target.value)
+                      }
+                    >
+                      {[
+                        "Monday",
+                        "Tuesday",
+                        "Wednesday",
+                        "Thursday",
+                        "Friday",
+                        "Saturday",
+                      ].map((d) => (
+                        <option key={d} value={d}>
+                          {d}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-[10px] text-gray-500">Time</label>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="time"
+                        className="w-full text-xs p-1 border rounded"
+                        value={slot.startTime}
+                        onChange={(e) =>
+                          updateSchedule(index, "startTime", e.target.value)
+                        }
+                      />
+                      <span className="text-gray-400">-</span>
+                      <input
+                        type="time"
+                        className="w-full text-xs p-1 border rounded"
+                        value={slot.endTime}
+                        onChange={(e) =>
+                          updateSchedule(index, "endTime", e.target.value)
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-[10px] text-gray-500">Room</label>
+                    <input
+                      className="w-full text-xs p-1 border rounded"
+                      placeholder="Lab 1"
+                      value={slot.location}
+                      onChange={(e) =>
+                        updateSchedule(index, "location", e.target.value)
+                      }
+                    />
+                  </div>
+                  <div className="col-span-1 flex justify-center pb-1">
+                    {schedule.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSchedule(schedule.filter((_, i) => i !== index))
+                        }
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => onOpenChange(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border rounded-md hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50"
+              >
+                {loading ? "Adding..." : "Add Unit"}
+              </button>
+            </div>
+          </form>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
+}
 
 interface CreateGroupDialogProps {
   open: boolean;
