@@ -17,7 +17,6 @@ export default function LoginPage() {
     <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4 sm:p-8">
       {/* Mobile-first: Full width container, adjusting max-width for larger screens */}
       <div className="w-full max-w-md space-y-8">
-        
         {/* Header Section */}
         <div className="text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
@@ -35,8 +34,8 @@ export default function LoginPage() {
         <div className="rounded-lg border bg-card p-6 shadow-sm sm:p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label 
-                htmlFor="email" 
+              <label
+                htmlFor="email"
                 className="block text-sm font-medium text-foreground"
               >
                 Email address
@@ -55,8 +54,8 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label 
-                htmlFor="password" 
+              <label
+                htmlFor="password"
                 className="block text-sm font-medium text-foreground"
               >
                 Password
@@ -93,8 +92,8 @@ export default function LoginPage() {
                   type="checkbox"
                   className="h-4 w-4 rounded border-input text-primary focus:ring-primary"
                 />
-                <label 
-                  htmlFor="remember-me" 
+                <label
+                  htmlFor="remember-me"
                   className="ml-2 block text-sm text-muted-foreground"
                 >
                   Remember me
@@ -102,7 +101,10 @@ export default function LoginPage() {
               </div>
 
               <div className="text-sm">
-                <a href="#" className="font-medium text-primary hover:text-primary/90">
+                <a
+                  href="#"
+                  className="font-medium text-primary hover:text-primary/90"
+                >
                   Forgot password?
                 </a>
               </div>
