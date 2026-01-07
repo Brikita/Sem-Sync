@@ -1,17 +1,49 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { Eye, EyeOff, BookOpen, Loader2 } from "lucide-react";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { auth } from "../../lib/firebase";
+import { createUserProfile } from "../../lib/auth";
+import type { UserRole } from "../../types";
 
 export default function RegisterPage() {
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [role, setRole] = useState("student");
+  const [role, setRole] = useState<UserRole>("student");
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
-    // TODO: Implement Firebase registration
-    setTimeout(() => setIsLoading(false), 2000);
+    setError(null);
+
+    const formData = new FormData(e.currentTarget);
+    const name = formData.get("name") as string;
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
+
+    try {
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+
+      await createUserProfile(userCredential.user.uid, {
+        email,
+        displayName: name,
+        role,
+        createdAt: Date.now(),
+      });
+
+      navigate("/dashboard"); // Redirect to dashboard after success
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "Failed to create account");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -31,6 +63,11 @@ export default function RegisterPage() {
 
         <div className="rounded-lg border bg-card p-6 shadow-sm sm:p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
+            {error && (
+              <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+                {error}
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-foreground">
                 Full Name

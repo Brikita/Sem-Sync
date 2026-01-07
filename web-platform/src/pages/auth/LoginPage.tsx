@@ -1,22 +1,40 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { Eye, EyeOff, BookOpen, Loader2 } from "lucide-react";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "../../lib/firebase";
 
 export default function LoginPage() {
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
-    // TODO: Implement Firebase login
-    setTimeout(() => setIsLoading(false), 2000); // Simulate delay
+    setError(null);
+    
+    const formData = new FormData(e.currentTarget);
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
+
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      navigate("/dashboard");
+    } catch (err: any) {
+      console.error(err);
+      setError("Invalid email or password");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4 sm:p-8">
       {/* Mobile-first: Full width container, adjusting max-width for larger screens */}
       <div className="w-full max-w-md space-y-8">
+        
         {/* Header Section */}
         <div className="text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
@@ -33,9 +51,14 @@ export default function LoginPage() {
         {/* Login Form */}
         <div className="rounded-lg border bg-card p-6 shadow-sm sm:p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
+            {error && (
+              <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+                {error}
+              </div>
+            )}
             <div>
-              <label
-                htmlFor="email"
+              <label 
+                htmlFor="email" 
                 className="block text-sm font-medium text-foreground"
               >
                 Email address
@@ -54,8 +77,8 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label
-                htmlFor="password"
+              <label 
+                htmlFor="password" 
                 className="block text-sm font-medium text-foreground"
               >
                 Password
@@ -92,8 +115,8 @@ export default function LoginPage() {
                   type="checkbox"
                   className="h-4 w-4 rounded border-input text-primary focus:ring-primary"
                 />
-                <label
-                  htmlFor="remember-me"
+                <label 
+                  htmlFor="remember-me" 
                   className="ml-2 block text-sm text-muted-foreground"
                 >
                   Remember me
@@ -101,10 +124,7 @@ export default function LoginPage() {
               </div>
 
               <div className="text-sm">
-                <a
-                  href="#"
-                  className="font-medium text-primary hover:text-primary/90"
-                >
+                <a href="#" className="font-medium text-primary hover:text-primary/90">
                   Forgot password?
                 </a>
               </div>
@@ -152,3 +172,4 @@ export default function LoginPage() {
     </div>
   );
 }
+
