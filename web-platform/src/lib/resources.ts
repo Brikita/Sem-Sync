@@ -97,7 +97,10 @@ export const deleteResource = async (
   try {
     await deleteObject(storageRef);
   } catch (err) {
-    console.error("Error deleting file from storage (might already be gone):", err);
+    console.error(
+      "Error deleting file from storage (might already be gone):",
+      err
+    );
   }
 
   // B. Delete from Firestore

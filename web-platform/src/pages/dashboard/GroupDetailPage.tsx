@@ -11,6 +11,12 @@ import {
   type AcademicUnit,
 } from "../../lib/groups";
 import {
+  subscribeToResources,
+  uploadResource,
+  deleteResource,
+  type CourseResource,
+} from "../../lib/resources";
+import {
   ArrowLeft,
   Users,
   User,
@@ -21,6 +27,10 @@ import {
   Calendar,
   Clock,
   MapPin,
+  FileText,
+  Download,
+  Trash2,
+  Paperclip,
 } from "lucide-react";
 import { useAuthStore } from "../../store/authStore";
 import { formatDistanceToNow } from "date-fns";
@@ -32,16 +42,25 @@ export default function GroupDetailPage() {
   const { user } = useAuthStore();
   const [group, setGroup] = useState<AcademicGroup | null>(null);
 
-  // Tabs: 'feed' | 'units'
-  const [activeTab, setActiveTab] = useState<"feed" | "units">("feed");
+  // Tabs: 'feed' | 'units' | 'resources'
+  const [activeTab, setActiveTab] = useState<"feed" | "units" | "resources">(
+    "feed"
+  );
 
   // Data
   const [posts, setPosts] = useState<GroupPost[]>([]);
   const [units, setUnits] = useState<AcademicUnit[]>([]);
+  const [resources, setResources] = useState<CourseResource[]>([]);
 
   // Loading states
   const [postsLoading, setPostsLoading] = useState(true);
   const [loading, setLoading] = useState(true);
+
+  // Resource Form State
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [resourceTitle, setResourceTitle] = useState("");
+  const [resourceUnitId, setResourceUnitId] = useState("");
 
   // Post Form State
   const [newPost, setNewPost] = useState("");
@@ -58,6 +77,15 @@ export default function GroupDetailPage() {
     if (!groupId) return;
     const unsubscribe = subscribeToUnits(groupId, (data) => {
       setUnits(data);
+    });
+    return () => unsubscribe();
+  }, [groupId]);
+
+  // Subscribe to Resources
+  useEffect(() => {
+    if (!groupId) return;
+    const unsubscribe = subscribeToResources(groupId, (data) => {
+      setResources(data);
     });
     return () => unsubscribe();
   }, [groupId]);
@@ -96,6 +124,40 @@ export default function GroupDetailPage() {
   if (!group) return <div className="p-8">Group not found.</div>;
 
   const isRep = user?.uid === group.repId;
+
+  const handleUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !groupId || !uploadFile) return;
+
+    try {
+      setIsUploading(true);
+      const unit = units.find((u) => u.id === resourceUnitId);
+
+      await uploadResource(groupId, uploadFile, {
+        unitId: resourceUnitId,
+        unitName: unit?.name || "General",
+        title: resourceTitle || uploadFile.name,
+        description: "",
+        uploadedBy: user.uid,
+      });
+
+      // Reset Form
+      setUploadFile(null);
+      setResourceTitle("");
+      setResourceUnitId("");
+    } catch (error) {
+      console.error("Upload failed", error);
+      alert("Upload failed. Make sure the file is < 10MB.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDeleteResource = async (res: CourseResource) => {
+    if (!confirm("Delete this file permanently?")) return;
+    if (!groupId) return;
+    await deleteResource(groupId, res.id, (res as any).storagePath); // Need to expose storagePath in type or just cast
+  };
 
   const handlePost = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -207,6 +269,17 @@ export default function GroupDetailPage() {
           >
             <BookOpen className="h-4 w-4" />
             Units & Schedule
+          </button>
+          <button
+            onClick={() => setActiveTab("resources")}
+            className={`${
+              activeTab === "resources"
+                ? "border-indigo-500 text-indigo-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2`}
+          >
+            <FileText className="h-4 w-4" />
+            Resources
           </button>
         </nav>
       </div>
@@ -360,6 +433,126 @@ export default function GroupDetailPage() {
                 )}
               </div>
             </>
+          )}
+
+          {activeTab === "resources" && (
+            <div className="space-y-6">
+              {/* Upload Form - Rep Only */}
+              {isRep && (
+                <div className="bg-white rounded-lg border shadow-sm p-4">
+                  <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                    <Paperclip className="h-4 w-4" />
+                    Upload Learning Material
+                  </h3>
+                  <form onSubmit={handleUpload} className="space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <input
+                        type="text"
+                        placeholder="File Title (e.g., Week 1 Slides)"
+                        className="text-sm border rounded px-3 py-2"
+                        value={resourceTitle}
+                        onChange={(e) => setResourceTitle(e.target.value)}
+                        required
+                      />
+                      <select
+                        value={resourceUnitId}
+                        onChange={(e) => setResourceUnitId(e.target.value)}
+                        className="text-sm border rounded px-3 py-2 bg-white"
+                        required
+                      >
+                        <option value="">Select Unit</option>
+                        {units.map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.code} - {u.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="file"
+                        className="text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                        onChange={(e) =>
+                          setUploadFile(
+                            e.target.files ? e.target.files[0] : null
+                          )
+                        }
+                        required
+                      />
+                      <div className="flex-1"></div>
+                      <button
+                        type="submit"
+                        disabled={isUploading}
+                        className="bg-indigo-600 text-white text-sm px-4 py-2 rounded hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                      >
+                        {isUploading ? "Uploading..." : "Upload"}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {/* Resources List */}
+              <div className="space-y-3">
+                {resources.length === 0 ? (
+                  <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-lg">
+                    <FileText className="mx-auto h-12 w-12 text-gray-300" />
+                    <h3 className="mt-2 text-sm font-semibold text-gray-900">
+                      No resources available
+                    </h3>
+                  </div>
+                ) : (
+                  resources.map((res) => (
+                    <div
+                      key={res.id}
+                      className="bg-white p-3 rounded-lg border shadow-sm flex items-start gap-3 hover:border-indigo-300 transition-colors"
+                    >
+                      <div className="h-10 w-10 bg-indigo-50 rounded flex items-center justify-center shrink-0">
+                        <FileText className="h-5 w-5 text-indigo-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-start">
+                          <h4
+                            className="font-medium text-sm text-gray-900 truncate pr-2"
+                            title={res.title}
+                          >
+                            {res.title}
+                          </h4>
+                          {isRep && (
+                            <button
+                              onClick={() => handleDeleteResource(res)}
+                              className="text-gray-400 hover:text-red-500"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
+                            {res.unitName}
+                          </span>
+                          <span className="text-xs text-gray-400">
+                            •{" "}
+                            {new Date(
+                              res.createdAt?.seconds * 1000 || Date.now()
+                            ).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                      <a
+                        href={res.fileUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="h-8 w-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors"
+                        title="Download"
+                      >
+                        <Download className="h-4 w-4" />
+                      </a>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
           )}
 
           {activeTab === "units" && (
