@@ -16,6 +16,8 @@ import {
   addTask,
   updateTaskStatus,
   deleteTask,
+  subscribeToCompletedAssessments,
+  toggleAssessmentCompletion,
   type Task,
 } from "../../lib/tasks";
 import {
@@ -94,13 +96,32 @@ export default function TasksPage() {
     };
   }, [userGroups]);
 
+  // 4. Subscribe to Completed Assessments
+  const [completedAssessmentIds, setCompletedAssessmentIds] = useState<
+    Set<string>
+  >(new Set());
+
+  useEffect(() => {
+    if (!user) return;
+    const unsubscribe = subscribeToCompletedAssessments(user.uid, (ids) => {
+      setCompletedAssessmentIds(new Set(ids));
+    });
+    return () => unsubscribe();
+  }, [user]);
+
   const handleAddTask = async (taskData: any) => {
     if (!user) return;
     await addTask(user.uid, taskData);
   };
 
   const handleToggleStatus = async (item: DisplayItem) => {
-    if (item.source === "assessment") return; // Cannot toggle assessment status yet (read only)
+    if (!user) return;
+
+    if (item.source === "assessment") {
+      const isDone = item.status === "done";
+      await toggleAssessmentCompletion(user.uid, item.id, !isDone);
+      return;
+    }
 
     // Type guard for personal task
     const task = item.originalObject as Task;
@@ -147,14 +168,16 @@ export default function TasksPage() {
       const date = a.eventDate?.seconds
         ? new Date(a.eventDate.seconds * 1000)
         : null;
+
+      const isCompleted = completedAssessmentIds.has(a.id);
+
       return {
         id: a.id,
         source: "assessment" as const,
         title: `Exam/CAT: ${a.unitName || "Unknown Unit"}`,
         description: a.content,
-        dueDat: date,
         dueDate: date,
-        status: "todo" as const, // Assessments default to todo for now
+        status: isCompleted ? ("done" as const) : ("todo" as const),
         priority: "high" as const, // Assessments are always high priority
         tag: "Academic",
         originalObject: a,
@@ -249,12 +272,7 @@ export default function TasksPage() {
               <div className="flex items-start gap-4 flex-1">
                 <button
                   onClick={() => handleToggleStatus(item)}
-                  disabled={item.source === "assessment"}
-                  className={`mt-1 flex-shrink-0 rounded-full transition-colors ${
-                    item.source === "assessment"
-                      ? "cursor-default opacity-50"
-                      : "cursor-pointer"
-                  } ${
+                  className={`mt-1 flex-shrink-0 rounded-full transition-colors cursor-pointer ${
                     item.status === "done"
                       ? "text-green-500"
                       : "text-gray-300 hover:text-gray-500"
