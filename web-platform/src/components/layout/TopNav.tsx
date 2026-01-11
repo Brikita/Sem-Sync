@@ -15,6 +15,7 @@ const pageTitles: Record<string, string> = {
   "/notebook": "Notes",
   "/groups": "Classes",
   "/profile": "Settings",
+  "/instructor": "Instructor Dashboard",
 };
 
 export default function TopNav({ onMenuClick }: TopNavProps) {
