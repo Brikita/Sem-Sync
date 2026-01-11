@@ -4,6 +4,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "./lib/firebase";
 import { getUserProfile } from "./lib/auth";
 import { useAuthStore } from "./store/authStore";
+import { ThemeProvider } from "./hooks/useTheme";
 
 // Pages
 import LandingPage from "./pages/LandingPage";
@@ -44,29 +45,31 @@ function App() {
   }, [setUser, setIsLoading]);
 
   return (
-    <BrowserRouter>
-      <Routes>
-        {/* Public Routes */}
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
+    <ThemeProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
 
-        {/* Protected Routes (Dashboard) */}
-        <Route element={<ProtectedRoute />}>
-          <Route element={<DashboardLayout />}>
-            <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/timetable" element={<TimetablePage />} />
-            <Route path="/groups" element={<GroupsPage />} />
-            <Route path="/groups/:groupId" element={<GroupDetailPage />} />
-            <Route path="/tasks" element={<TasksPage />} />
-            <Route path="/notebook" element={<NotebookPage />} />
+          {/* Protected Routes (Dashboard) */}
+          <Route element={<ProtectedRoute />}>
+            <Route element={<DashboardLayout />}>
+              <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/timetable" element={<TimetablePage />} />
+              <Route path="/groups" element={<GroupsPage />} />
+              <Route path="/groups/:groupId" element={<GroupDetailPage />} />
+              <Route path="/tasks" element={<TasksPage />} />
+              <Route path="/notebook" element={<NotebookPage />} />
+            </Route>
           </Route>
-        </Route>
 
-        {/* Catch all - Redirect to 404 or Home */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </BrowserRouter>
+          {/* Catch all - Redirect to 404 or Home */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }
 
