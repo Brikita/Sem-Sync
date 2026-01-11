@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Plus, Trash2, ChevronLeft, Search, PenLine } from "lucide-react";
+import RichTextEditor from "../../components/notebook/RichTextEditor";
 import { useAuthStore } from "../../store/authStore";
 import {
   subscribeToNotes,
@@ -227,12 +228,13 @@ export default function NotebookPage() {
                 placeholder="Note Title"
                 className="text-3xl font-bold bg-transparent border-none focus:outline-none focus:ring-0 placeholder:text-muted-foreground/40 mb-4"
               />
-              <textarea
-                value={activeNoteContent}
-                onChange={(e) => setActiveNoteContent(e.target.value)}
-                placeholder="Start writing..."
-                className="flex-1 resize-none bg-transparent border-none focus:outline-none focus:ring-0 text-base leading-relaxed placeholder:text-muted-foreground/30"
-              />
+              <div className="flex-1 min-h-0">
+                <RichTextEditor
+                  key={selectedNoteId}
+                  content={activeNoteContent}
+                  onChange={setActiveNoteContent}
+                />
+              </div>
             </div>
 
             {/* Desktop Save Indicator */}
