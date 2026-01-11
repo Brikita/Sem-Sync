@@ -9,8 +9,10 @@ import {
   serverTimestamp,
   updateDoc,
   arrayUnion,
+  getDoc,
 } from "firebase/firestore";
 import { db } from "./firebase";
+import { createNotification } from "./notifications";
 
 export interface AcademicGroup {
   id: string;
@@ -155,16 +157,73 @@ export const createPost = async (
     eventDate?: Date;
   } = {}
 ) => {
+  // Remove any undefined fields from additionalData to verify Firestore compatibility
+  const cleanAdditionalData = Object.fromEntries(
+    Object.entries(additionalData).filter(([_, v]) => v !== undefined)
+  );
+
   const postsRef = collection(db, "groups", groupId, "posts");
-  await addDoc(postsRef, {
+  const postRef = await addDoc(postsRef, {
     groupId,
     authorId: userId,
     authorName,
     content,
     type,
-    ...additionalData,
+    ...cleanAdditionalData,
     createdAt: serverTimestamp(),
   });
+
+  // Auto-generate notifications for announcements or assessments
+  if (type === "announcement" || additionalData.isAssessment) {
+    try {
+      // Get group data to find members
+      const groupDoc = await getDoc(doc(db, "groups", groupId));
+      if (groupDoc.exists()) {
+        const groupData = groupDoc.data();
+        const groupName = groupData.name || "Group";
+        const members: string[] = groupData.members || [];
+
+        // Create notifications for all members except the author
+        const notificationPromises = members
+          .filter((memberId) => memberId !== userId)
+          .map((memberId) => {
+            const notificationType = cleanAdditionalData.isAssessment
+              ? "assessment"
+              : "announcement";
+            const title = cleanAdditionalData.isAssessment
+              ? `📋 New Assessment in ${groupName}`
+              : `📢 Announcement in ${groupName}`;
+            const message =
+              content.length > 100 ? content.slice(0, 100) + "..." : content;
+
+            // Construct metadata without undefined values
+            const metadata: any = {
+              groupId,
+              postId: postRef.id,
+            };
+            if (cleanAdditionalData.unitId) {
+              metadata.unitId = cleanAdditionalData.unitId;
+            }
+
+            return createNotification(
+              memberId,
+              notificationType,
+              title,
+              message,
+              {
+                link: `/groups/${groupId}`,
+                metadata,
+              }
+            );
+          });
+
+        await Promise.all(notificationPromises);
+      }
+    } catch (error) {
+      console.error("Failed to create notifications for post:", error);
+      // Don't fail the post creation if notifications fail
+    }
+  }
 };
 
 // --- Unit Management ---

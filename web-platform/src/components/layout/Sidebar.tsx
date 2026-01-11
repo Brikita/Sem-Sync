@@ -37,9 +37,10 @@ export default function Sidebar({ open, setOpen }: SidebarProps) {
   ];
 
   // Instructor-only navigation
-  const instructorNavigation = user?.role === "instructor" ? [
-    { name: "Announcements", href: "/instructor", icon: Megaphone },
-  ] : [];
+  const instructorNavigation =
+    user?.role === "instructor"
+      ? [{ name: "Announcements", href: "/instructor", icon: Megaphone }]
+      : [];
 
   const settingsNavigation = [
     { name: "Settings", href: "/profile", icon: Settings },
