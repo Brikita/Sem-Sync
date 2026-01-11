@@ -34,24 +34,24 @@ export default function GroupsPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
             Academic Groups
           </h1>
-          <p className="text-gray-500 mt-1">
+          <p className="text-muted-foreground mt-1">
             Connect with your class and lecturer.
           </p>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
           <button
             onClick={() => setIsJoinOpen(true)}
-            className="flex-1 sm:flex-none inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-white border border-gray-300 hover:bg-gray-100 h-10 px-4 py-2"
+            className="flex-1 sm:flex-none inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-card border border-border text-foreground hover:bg-muted h-10 px-4 py-2"
           >
             <Hash className="mr-2 h-4 w-4" />
             Join Class
           </button>
           <button
             onClick={() => setIsCreateOpen(true)}
-            className="flex-1 sm:flex-none inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-indigo-600 text-white hover:bg-indigo-700 h-10 px-4 py-2 shadow-sm"
+            className="flex-1 sm:flex-none inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 shadow-sm"
           >
             <Plus className="mr-2 h-4 w-4" />
             Create Class
@@ -61,12 +61,12 @@ export default function GroupsPage() {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {groups.length === 0 ? (
-          <div className="col-span-full text-center py-12 border-2 border-dashed border-gray-200 rounded-lg">
-            <Users className="mx-auto h-12 w-12 text-gray-300" />
-            <h3 className="mt-2 text-sm font-semibold text-gray-900">
+          <div className="col-span-full text-center py-12 border-2 border-dashed border-border rounded-lg">
+            <Users className="mx-auto h-12 w-12 text-muted-foreground/50" />
+            <h3 className="mt-2 text-sm font-semibold text-foreground">
               No groups joined
             </h3>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-muted-foreground">
               Join a class with a code or create one as a Rep.
             </p>
           </div>
@@ -75,12 +75,12 @@ export default function GroupsPage() {
             <div
               key={group.id}
               onClick={() => navigate(`/groups/${group.id}`)}
-              className="group relative rounded-lg border bg-card p-6 shadow-sm transition-all hover:shadow-md cursor-pointer"
+              className="group relative rounded-lg border border-border bg-card p-6 shadow-sm transition-all hover:bg-muted/50 cursor-pointer"
             >
               <div className="flex flex-col gap-4">
                 <div className="flex items-start justify-between">
                   <div>
-                    <h3 className="font-semibold leading-none tracking-tight text-lg">
+                    <h3 className="font-semibold leading-none tracking-tight text-lg text-foreground">
                       {group.name}
                     </h3>
                     <p className="text-sm text-muted-foreground mt-1">
@@ -90,13 +90,13 @@ export default function GroupsPage() {
 
                   {/* Badge for Creator */}
                   {group.repId === user?.uid && (
-                    <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-indigo-100 text-indigo-800">
+                    <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-300">
                       Rep
                     </span>
                   )}
                 </div>
 
-                <div className="flex items-center gap-2 text-sm text-gray-500">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Users className="h-4 w-4" />
                   <span>{group.memberCount} Members</span>
                 </div>
