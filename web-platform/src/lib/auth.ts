@@ -55,3 +55,11 @@ export const getUserProfile = async (
     return null;
   }
 };
+
+export const updateUserProfile = async (
+  uid: string,
+  data: Partial<Omit<UserProfile, "uid" | "createdAt">>
+): Promise<void> => {
+  const userRef = doc(db, "users", uid);
+  await setDoc(userRef, data, { merge: true });
+};
