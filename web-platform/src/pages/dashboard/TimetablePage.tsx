@@ -3,10 +3,12 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
-import { Plus } from "lucide-react";
+import { Plus, Sparkles, Upload, Loader2, FileImage } from "lucide-react";
 import { useAuthStore } from "../../store/authStore";
 import AddCourseDialog from "../../components/timetable/AddCourseDialog";
 import { addCourse, subscribeToCourses } from "../../lib/courses";
+import { extractTimetableFromImage } from "../../lib/gemini";
+import { supabase } from "../../lib/supabase";
 import {
   subscribeToUserGroups,
   subscribeToUnits,
@@ -32,6 +34,9 @@ export default function TimetablePage() {
   const [userGroups, setUserGroups] = useState<AcademicGroup[]>([]);
   const [groupUnits, setGroupUnits] = useState<AcademicUnit[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [isProcessingAI, setIsProcessingAI] = useState(false);
+  const [importStatus, setImportStatus] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 1. Subscribe to Personal Courses
   useEffect(() => {
@@ -76,6 +81,77 @@ export default function TimetablePage() {
     };
   }, [userGroups]);
 
+  const handleAIImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    try {
+      setIsProcessingAI(true);
+      setImportStatus("Uploading image...");
+
+      // 1. Upload to Supabase Storage (Optional - Backup)
+      const storagePath = `timetables/${user.uid}/${Date.now()}_${file.name}`;
+      try {
+        const { error: uploadError } = await supabase.storage
+          .from("resources")
+          .upload(storagePath, file);
+
+        if (uploadError) {
+          console.warn(
+            "Supabase backup upload failed (skipping):",
+            uploadError.message,
+          );
+        }
+      } catch (uploadErr) {
+        console.warn("Supabase backup upload exception (skipping):", uploadErr);
+      }
+
+      setImportStatus("Analyzing schedule with Gemini AI...");
+
+      // 2. Extract Data
+      const timetableEntries = await extractTimetableFromImage(file);
+
+      if (timetableEntries.length === 0) {
+        alert("No classes were detected. Please try a clearer image.");
+        return;
+      }
+
+      setImportStatus(`Found ${timetableEntries.length} classes. Importing...`);
+
+      // 3. Import Data
+      const promises = timetableEntries.map((entry) => {
+        // Map day string to number
+        const dayNumber = DAY_MAP[entry.day] || 1;
+
+        // color based on type
+        let color = "#3b82f6"; // blue default
+        const type = entry.type?.toLowerCase() || "";
+        if (type.includes("tutorial")) color = "#10b981"; // green
+        if (type.includes("lab")) color = "#f59e0b"; // amber
+
+        return addCourse(user.uid, {
+          name: entry.subject || "Unknown Course",
+          location: entry.room || "TBA",
+          dayOfWeek: dayNumber.toString(),
+          startTime: entry.startTime || "09:00",
+          endTime: entry.endTime || "10:00",
+          color: color,
+        });
+      });
+
+      await Promise.all(promises);
+
+      alert(`Successfully imported ${timetableEntries.length} classes!`);
+    } catch (error) {
+      console.error("AI Import Error:", error);
+      alert("Failed to import timetable. See console for details.");
+    } finally {
+      setIsProcessingAI(false);
+      setImportStatus("");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   // Transform Firestore courses into FullCalendar recurring events
   const personalEvents = courses.map((course) => ({
     id: course.id,
@@ -108,7 +184,7 @@ export default function TimetablePage() {
         type: "group",
         lecturer: unit.lecturerName,
       },
-    }))
+    })),
   );
 
   const events = [...personalEvents, ...groupEvents];
@@ -136,13 +212,37 @@ export default function TimetablePage() {
           </p>
         </div>
 
-        <button
-          onClick={() => setDialogOpen(true)}
-          className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-        >
-          <Plus className="h-4 w-4" />
-          Add Course
-        </button>
+        <div className="flex gap-2">
+          {isProcessingAI ? (
+            <div className="flex items-center gap-2 rounded-md bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              {importStatus}
+            </div>
+          ) : (
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="inline-flex items-center justify-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground"
+              title="Upload Timetable Image"
+            >
+              <Sparkles className="h-4 w-4 text-yellow-500" />
+              AI Import
+            </button>
+          )}
+          <input
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            accept="image/*"
+            onChange={handleAIImport}
+          />
+          <button
+            onClick={() => setDialogOpen(true)}
+            className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            <Plus className="h-4 w-4" />
+            Add Course
+          </button>
+        </div>
       </div>
 
       <div className="rounded-xl border bg-card p-4 shadow-sm text-card-foreground overflow-hidden">
