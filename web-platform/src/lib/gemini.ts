@@ -1,83 +1,91 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+// Note: In production, move this to a backend to secure your key.
 
-if (!API_KEY || API_KEY.includes("your_gemini_api_key")) {
-  console.warn(
-    "⚠️ Gemini Config Error: API Key is missing or default. AI Timetable extraction will fail.",
-  );
-}
-
-const genAI = new GoogleGenerativeAI(API_KEY || "dummy-key");
+const genAI = new GoogleGenerativeAI(API_KEY || "");
 
 export interface TimetableEntry {
   day: string;
-  startTime: string; // HH:mm format
-  endTime: string; // HH:mm format
+  startTime: string;
+  endTime: string;
   subject: string;
-  room?: string;
-  type?: "lecture" | "tutorial" | "lab" | "other";
-  lecturer?: string;
+  room: string;
+  type: "lecture" | "tutorial" | "lab" | "other";
+  lecturer: string;
 }
+
+const timetableSchema = {
+  description: "List of classes from a timetable",
+  type: SchemaType.ARRAY,
+  items: {
+    type: SchemaType.OBJECT,
+    properties: {
+      day: { type: SchemaType.STRING },
+      startTime: { type: SchemaType.STRING },
+      endTime: { type: SchemaType.STRING },
+      subject: { type: SchemaType.STRING },
+      room: { type: SchemaType.STRING },
+      type: {
+        type: SchemaType.STRING,
+        enum: ["lecture", "tutorial", "lab", "other"],
+      },
+      lecturer: { type: SchemaType.STRING },
+    },
+    required: ["day", "startTime", "endTime", "subject"],
+  },
+};
+
+// Helper: Pause execution for X milliseconds
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export async function extractTimetableFromImage(
   file: File,
 ): Promise<TimetableEntry[]> {
-  if (!API_KEY) {
-    throw new Error("Gemini API key is not configured.");
-  }
+  if (!API_KEY) throw new Error("Gemini API key is not configured.");
 
-  try {
-    // Note: Using a specific available model. if 1.5-flash fails, try 'gemini-1.5-flash-latest'
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  // We only use the one model that we know exists for your key
+  const modelName = "gemini-2.0-flash-exp";
+  const base64Data = await fileToGenerativePart(file);
+  const prompt = "Analyze this timetable image and extract the schedule.";
 
-    // Convert file to base64
-    const base64Data = await fileToGenerativePart(file);
+  // Try up to 3 times with exponential backoff
+  const maxRetries = 3;
 
-    const prompt = `
-      Analyze this timetable image and extract the schedule into a strict JSON array.
-      Identify the following for each class session:
-      - day (Full English name: Monday, Tuesday, etc.)
-      - startTime (24-hour format HH:mm)
-      - endTime (24-hour format HH:mm)
-      - subject (Course code AND Name if available, e.g. "CSC101 Introduction to Programming")
-      - room (Location/Venue)
-      - type (Lecture, Tutorial, Lab) - default to "lecture" if unsure.
-      - lecturer (Name if available)
-
-      If the image is not a timetable or is unreadable, return an empty array [].
-      
-      Return ONLY the raw JSON array. Valid JSON only. Do not wrap in markdown code blocks like \`\`\`json.
-    `;
-
-    const result = await model.generateContent([prompt, base64Data]);
-    const response = await result.response;
-    const text = response.text();
-
-    console.log("Raw Geminii response:", text);
-
-    // Clean up the response if it contains markdown formatting despite instructions
-    const cleanedText = text
-      .replace(/```json/g, "")
-      .replace(/```/g, "")
-      .trim();
-
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      const data = JSON.parse(cleanedText);
-      if (Array.isArray(data)) {
-        return data as TimetableEntry[];
+      console.log(`Attempt ${attempt}: Using ${modelName}`);
+
+      const model = genAI.getGenerativeModel({
+        model: modelName,
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: timetableSchema,
+        },
+      });
+
+      const result = await model.generateContent([prompt, base64Data]);
+      const response = await result.response;
+      return JSON.parse(response.text()) as TimetableEntry[];
+    } catch (error: any) {
+      console.warn(`Attempt ${attempt} failed:`, error.message);
+
+      // Check if it's the "Too Many Requests" error
+      if (error.message.includes("429")) {
+        if (attempt === maxRetries) throw error; // Give up on last try
+
+        // The error said "retry in 25s", so we wait 30s to be safe.
+        console.log("Rate limit hit. Waiting 30 seconds before retry...");
+        await wait(30000);
+        continue;
       }
-      return [];
-    } catch (e) {
-      console.error("Failed to parse JSON from AI response", e);
-      throw new Error("The AI response was not valid data.");
+
+      // If it's a 404 or other error, don't retry, just throw
+      throw error;
     }
-  } catch (error) {
-    console.error("Error extraction timetable:", error);
-    throw new Error(
-      "Failed to extract timetable data. Please ensure the image is clear and try again.",
-    );
   }
+
+  throw new Error("Failed to extract timetable after multiple attempts.");
 }
 
 async function fileToGenerativePart(file: File) {
@@ -86,7 +94,6 @@ async function fileToGenerativePart(file: File) {
     reader.onloadend = () => resolve((reader.result as string).split(",")[1]);
     reader.readAsDataURL(file);
   });
-
   return {
     inlineData: {
       data: (await base64EncodedDataPromise) as string,
