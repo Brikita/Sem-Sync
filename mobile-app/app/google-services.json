@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "373517913972",
+    "project_id": "semsync-bf92d",
+    "storage_bucket": "semsync-bf92d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:373517913972:android:1a0b97801d13603346a621",
+        "android_client_info": {
+          "package_name": "com.example.semsync"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "373517913972-ktshmlkvh5ul8o42ofs4qcl5ioo4m27j.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBhXVEucCmjya4p9To7Jvr3rHjs6t8OMLs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "373517913972-ktshmlkvh5ul8o42ofs4qcl5ioo4m27j.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
