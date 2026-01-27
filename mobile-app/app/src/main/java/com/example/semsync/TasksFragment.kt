@@ -207,33 +207,32 @@ class TasksFragment : Fragment(R.layout.fragment_tasks) {
         dialogView.addView(dateLabel)
 
         var selectedDate: Long? = null
-        val dateInput = EditText(requireContext()).apply {
-            hint = "mm/dd/yyyy"
-            setHintTextColor(android.graphics.Color.parseColor("#666666"))
-            setTextColor(android.graphics.Color.WHITE)
-            setPadding(12, 8, 12, 8)
-            isFocusable = false
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { bottomMargin = 16 }
-            setOnClickListener {
-                val calendar = Calendar.getInstance()
-                val datePickerDialog = DatePickerDialog(
-                    requireContext(),
-                    { _, year, month, dayOfMonth ->
-                        val calendar = Calendar.getInstance()
-                        calendar.set(year, month, dayOfMonth)
-                        selectedDate = calendar.timeInMillis
-                        val sdf = SimpleDateFormat("MM/dd/yyyy", Locale.getDefault())
-                        dateInput.setText(sdf.format(calendar.time))
-                    },
-                    calendar.get(Calendar.YEAR),
-                    calendar.get(Calendar.MONTH),
-                    calendar.get(Calendar.DAY_OF_MONTH)
-                )
-                datePickerDialog.show()
-            }
+        val dateInput = EditText(requireContext())
+        dateInput.hint = "mm/dd/yyyy"
+        dateInput.setHintTextColor(android.graphics.Color.parseColor("#666666"))
+        dateInput.setTextColor(android.graphics.Color.WHITE)
+        dateInput.setPadding(12, 8, 12, 8)
+        dateInput.isFocusable = false
+        dateInput.layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { bottomMargin = 16 }
+        dateInput.setOnClickListener {
+            val calendar = Calendar.getInstance()
+            val datePickerDialog = DatePickerDialog(
+                requireContext(),
+                { _, year, month, dayOfMonth ->
+                    val selectedCalendar = Calendar.getInstance()
+                    selectedCalendar.set(year, month, dayOfMonth)
+                    selectedDate = selectedCalendar.timeInMillis
+                    val sdf = SimpleDateFormat("MM/dd/yyyy", Locale.getDefault())
+                    dateInput.setText(sdf.format(selectedCalendar.time))
+                },
+                calendar.get(Calendar.YEAR),
+                calendar.get(Calendar.MONTH),
+                calendar.get(Calendar.DAY_OF_MONTH)
+            )
+            datePickerDialog.show()
         }
         dialogView.addView(dateInput)
 
