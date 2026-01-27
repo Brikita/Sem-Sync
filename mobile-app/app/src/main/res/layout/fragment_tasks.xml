@@ -106,8 +106,8 @@
                 android:layout_width="80dp"
                 android:layout_height="80dp"
                 android:src="@android:drawable/ic_menu_save"
-                android:tint="#666666"
-                android:contentDescription="Empty state" />
+                android:contentDescription="Empty state"
+                app:tint="#666666" />
 
             <TextView
                 android:layout_width="match_parent"

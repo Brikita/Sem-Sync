@@ -45,8 +45,8 @@
             android:layout_height="32dp"
             android:background="?attr/selectableItemBackground"
             android:src="@android:drawable/ic_menu_close_clear_cancel"
-            android:tint="#a0a0a0"
-            android:contentDescription="Close" />
+            android:contentDescription="Close"
+            app:tint="#a0a0a0" />
 
     </LinearLayout>
 
@@ -176,8 +176,8 @@
             android:layout_height="32dp"
             android:background="?attr/selectableItemBackground"
             android:src="@android:drawable/ic_menu_today"
-            android:tint="#7c3aed"
-            android:contentDescription="Pick date" />
+            android:contentDescription="Pick date"
+            app:tint="#7c3aed" />
 
     </LinearLayout>
 
