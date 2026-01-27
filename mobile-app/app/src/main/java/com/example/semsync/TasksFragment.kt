@@ -5,6 +5,7 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.EditText
 import androidx.appcompat.app.AlertDialog
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import androidx.fragment.app.add
@@ -21,7 +22,7 @@ class TasksFragment : Fragment(R.layout.fragment_tasks) {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         recyclerView = view.findViewById(R.id.recyclerViewTasks)
-        val fab: androidx.compose.material3.FloatingActionButton = view.findViewById(R.id.fabAddTask)
+        val fab: FloatingActionButton = view.findViewById(R.id.fabAddTask)
 
         val currentUser = auth.currentUser?.uid ?: return
 
