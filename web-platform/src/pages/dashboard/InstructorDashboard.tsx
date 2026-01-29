@@ -102,7 +102,7 @@ export default function InstructorDashboard() {
         user.displayName || "Instructor",
         content,
         "announcement",
-        additionalData
+        additionalData,
       );
 
       // Reset form
