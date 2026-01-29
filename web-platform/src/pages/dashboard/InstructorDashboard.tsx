@@ -15,7 +15,6 @@ import {
   BookOpen,
   AlertCircle,
   CheckCircle,
-  Clock,
   ArrowRight,
 } from "lucide-react";
 
