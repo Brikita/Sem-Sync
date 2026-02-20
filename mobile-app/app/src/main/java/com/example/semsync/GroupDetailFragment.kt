@@ -55,7 +55,11 @@ class GroupDetailFragment : Fragment() {
         adapter = PostsAdapter(posts)
         recyclerView.adapter = adapter
 
-        binding.fabNewPost.setOnClickListener {
+        view.findViewById<View>(R.id.fab_members).setOnClickListener {
+            showMembersDialog()
+        }
+
+        view.findViewById<View>(R.id.fab_new_post).setOnClickListener {
             // Updated: Create a dialog for typing post content
             showCreatePostDialog()
         }
@@ -63,6 +67,26 @@ class GroupDetailFragment : Fragment() {
         if (groupId != null) {
             fetchPosts()
         }
+    }
+
+    private fun showMembersDialog() {
+        if (groupId == null) return
+
+        db.collection("groups").document(groupId!!).get()
+            .addOnSuccessListener { document ->
+                if (document.exists()) {
+                    val members = document.get("members") as? List<String> ?: emptyList()
+                    val memberCount = members.size
+                    
+                    // Simple dialog for now showing count.
+                    // Ideally we fetch user profiles for names, but that requires multiple queries.
+                    AlertDialog.Builder(requireContext())
+                        .setTitle("Group Members")
+                        .setMessage("Total Members: $memberCount\n\n(List view requires advanced queries)")
+                        .setPositiveButton("OK", null)
+                        .show()
+                }
+            }
     }
 
     private fun showCreatePostDialog() {
