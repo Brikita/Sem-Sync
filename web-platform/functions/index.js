@@ -157,19 +157,37 @@ exports.chat = onCall({ cors: true, timeoutSeconds: 60 }, async (request) => {
     // 1. Fetch User Context (Parallel)
     const db = admin.firestore();
     let systemContext = "";
-    
+
     try {
-        const [coursesSnap, tasksSnap, notesSnap] = await Promise.all([
-          db.collection(`users/${uid}/courses`).get(),
-          db.collection("tasks").where("userId", "==", uid).where("status", "!=", "done").get(),
-          db.collection(`users/${uid}/notes`).orderBy("createdAt", "desc").limit(3).get()
-        ]);
+      const [coursesSnap, tasksSnap, notesSnap] = await Promise.all([
+        db.collection(`users/${uid}/courses`).get(),
+        db
+          .collection("tasks")
+          .where("userId", "==", uid)
+          .where("status", "!=", "done")
+          .get(),
+        db
+          .collection(`users/${uid}/notes`)
+          .orderBy("createdAt", "desc")
+          .limit(3)
+          .get(),
+      ]);
 
-        const courses = coursesSnap.docs.map(d => `${d.data().code} (${d.data().name}) on Keep Day ${d.data().dayOfWeek}, ${d.data().startTime}`).join("; ");
-        const tasks = tasksSnap.docs.map(d => `- ${d.data().title}`).join("\n");
-        const notes = notesSnap.docs.map(d => `Note '${d.data().title}': ${d.data().content?.substring(0, 50)}...`).join("\n");
+      const courses = coursesSnap.docs
+        .map(
+          (d) =>
+            `${d.data().code} (${d.data().name}) on Keep Day ${d.data().dayOfWeek}, ${d.data().startTime}`,
+        )
+        .join("; ");
+      const tasks = tasksSnap.docs.map((d) => `- ${d.data().title}`).join("\n");
+      const notes = notesSnap.docs
+        .map(
+          (d) =>
+            `Note '${d.data().title}': ${d.data().content?.substring(0, 50)}...`,
+        )
+        .join("\n");
 
-        systemContext = `
+      systemContext = `
           Current Date/Time: ${new Date().toString()}
           USER DATA:
           [TIMETABLE]: ${courses || "None"}
@@ -178,7 +196,7 @@ exports.chat = onCall({ cors: true, timeoutSeconds: 60 }, async (request) => {
           Use this data to answer questions about 'next class', 'what is due', etc. If asked unrelated questions, ignore this context.
         `;
     } catch (e) {
-        logger.warn("Context fetch failed", e);
+      logger.warn("Context fetch failed", e);
     }
 
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
@@ -191,9 +209,9 @@ exports.chat = onCall({ cors: true, timeoutSeconds: 60 }, async (request) => {
 
     // Inject system prompt as the first exchange if context matches
     const finalHistory = [
-        { role: "user", parts: [{ text: "System Context: " + systemContext }] },
-        { role: "model", parts: [{ text: "Context received." }] },
-        ...formattedHistory
+      { role: "user", parts: [{ text: "System Context: " + systemContext }] },
+      { role: "model", parts: [{ text: "Context received." }] },
+      ...formattedHistory,
     ];
 
     const chat = model.startChat({
@@ -205,38 +223,44 @@ exports.chat = onCall({ cors: true, timeoutSeconds: 60 }, async (request) => {
     return { response: response.text() };
   } catch (error) {
     logger.error("Chat error", error);
-    throw new HttpsError("internal", "Failed to generate response " + error.message);
+    throw new HttpsError(
+      "internal",
+      "Failed to generate response " + error.message,
+    );
   }
 });
 
 /**
  * Trigger: Send FCM notification when a post is created
  */
-exports.sendNewPostNotification = onDocumentCreated("groups/{groupId}/posts/{postId}", async (event) => {
+exports.sendNewPostNotification = onDocumentCreated(
+  "groups/{groupId}/posts/{postId}",
+  async (event) => {
     const snapshot = event.data;
     if (!snapshot) return;
-    
+
     const post = snapshot.data();
     const groupId = event.params.groupId;
     const authorName = post.authorName || "Someone";
 
     // Create Notification Payload
     const message = {
-        notification: {
-            title: `New Post in Group`,
-            body: `${authorName}: ${post.content ? post.content.substring(0, 50) : "New attachment"}`
-        },
-        topic: `group_${groupId}`, // Subscribed by mobile app
-        data: {
-            groupId: groupId,
-            click_action: "FLUTTER_NOTIFICATION_CLICK"
-        }
+      notification: {
+        title: `New Post in Group`,
+        body: `${authorName}: ${post.content ? post.content.substring(0, 50) : "New attachment"}`,
+      },
+      topic: `group_${groupId}`, // Subscribed by mobile app
+      data: {
+        groupId: groupId,
+        click_action: "FLUTTER_NOTIFICATION_CLICK",
+      },
     };
 
     try {
-        await admin.messaging().send(message);
-        logger.info(`Notification sent to topic group_${groupId}`);
+      await admin.messaging().send(message);
+      logger.info(`Notification sent to topic group_${groupId}`);
     } catch (error) {
-        logger.error("Error sending notification", error);
+      logger.error("Error sending notification", error);
     }
-});
+  },
+);
