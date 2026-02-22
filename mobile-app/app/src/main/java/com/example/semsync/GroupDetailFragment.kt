@@ -18,6 +18,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import java.util.Locale
 
 class GroupDetailFragment : Fragment() {
 
@@ -75,11 +76,11 @@ class GroupDetailFragment : Fragment() {
         db.collection("groups").document(groupId!!).get()
             .addOnSuccessListener { document ->
                 if (document.exists()) {
-                    val members = document.get("members") as? List<String> ?: emptyList()
+                    // Corrected: Explicitly specify the type for emptyList
+                    val members = document.get("members") as? List<String> ?: emptyList<String>()
                     val memberCount = members.size
                     
                     // Simple dialog for now showing count.
-                    // Ideally we fetch user profiles for names, but that requires multiple queries.
                     AlertDialog.Builder(requireContext())
                         .setTitle("Group Members")
                         .setMessage("Total Members: $memberCount\n\n(List view requires advanced queries)")
@@ -122,7 +123,6 @@ class GroupDetailFragment : Fragment() {
             .add(newPost)
             .addOnSuccessListener {
                 Toast.makeText(context, "Post created!", Toast.LENGTH_SHORT).show()
-                // Optimistic UI updates handled by snapshot listener
             }
             .addOnFailureListener {
                 Toast.makeText(context, "Failed to post", Toast.LENGTH_SHORT).show()
@@ -168,7 +168,8 @@ class GroupDetailFragment : Fragment() {
             val post = posts[position]
             holder.authorName.text = post.authorName
             holder.postDate.text = post.createdAt?.toDate()?.toString() ?: "Just now"
-            holder.postType.text = post.type.capitalize()
+            // Updated deprecated capitalize() to modern equivalent
+            holder.postType.text = post.type.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
             holder.content.text = post.content
         }
 
