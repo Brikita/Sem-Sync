@@ -18,6 +18,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import java.util.Locale
 
 class GroupDetailFragment : Fragment() {
 
@@ -41,7 +42,6 @@ class GroupDetailFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Retrieve args from bundle
         arguments?.let {
             groupId = it.getString("groupId")
             groupName = it.getString("groupName")
@@ -49,7 +49,6 @@ class GroupDetailFragment : Fragment() {
 
         binding.textGroupDetailHeader.text = groupName ?: "Group Details"
 
-        // Initialize RecyclerView
         val recyclerView = view.findViewById<RecyclerView>(R.id.recycler_view_posts)
         recyclerView.layoutManager = LinearLayoutManager(context)
         adapter = PostsAdapter(posts)
@@ -60,7 +59,6 @@ class GroupDetailFragment : Fragment() {
         }
 
         view.findViewById<View>(R.id.fab_new_post).setOnClickListener {
-            // Updated: Create a dialog for typing post content
             showCreatePostDialog()
         }
 
@@ -75,11 +73,9 @@ class GroupDetailFragment : Fragment() {
         db.collection("groups").document(groupId!!).get()
             .addOnSuccessListener { document ->
                 if (document.exists()) {
-                    val members = document.get("members") as? List<String> ?: emptyList()
+                    val members = document.get("members") as? List<String> ?: emptyList<String>()
                     val memberCount = members.size
 
-                    // Simple dialog for now showing count.
-                    // Ideally we fetch user profiles for names, but that requires multiple queries.
                     AlertDialog.Builder(requireContext())
                         .setTitle("Group Members")
                         .setMessage("Total Members: $memberCount\n\n(List view requires advanced queries)")
@@ -120,13 +116,8 @@ class GroupDetailFragment : Fragment() {
         db.collection("groups").document(groupId!!)
             .collection("posts")
             .add(newPost)
-            .addOnSuccessListener {
-                Toast.makeText(context, "Post created!", Toast.LENGTH_SHORT).show()
-                // Optimistic UI updates handled by snapshot listener
-            }
-            .addOnFailureListener {
-                Toast.makeText(context, "Failed to post", Toast.LENGTH_SHORT).show()
-            }
+            .addOnSuccessListener { Toast.makeText(context, "Post created!", Toast.LENGTH_SHORT).show() }
+            .addOnFailureListener { Toast.makeText(context, "Failed to post", Toast.LENGTH_SHORT).show() }
     }
 
     private fun fetchPosts() {
@@ -159,8 +150,7 @@ class GroupDetailFragment : Fragment() {
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PostViewHolder {
-            val view = LayoutInflater.from(parent.context)
-                .inflate(R.layout.item_post, parent, false)
+            val view = LayoutInflater.from(parent.context).inflate(R.layout.item_post, parent, false)
             return PostViewHolder(view)
         }
 
@@ -168,7 +158,7 @@ class GroupDetailFragment : Fragment() {
             val post = posts[position]
             holder.authorName.text = post.authorName
             holder.postDate.text = post.createdAt?.toDate()?.toString() ?: "Just now"
-            holder.postType.text = post.type.capitalize()
+            holder.postType.text = post.type.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
             holder.content.text = post.content
         }
 
