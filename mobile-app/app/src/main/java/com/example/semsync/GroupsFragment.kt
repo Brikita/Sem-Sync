@@ -12,7 +12,6 @@ import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import androidx.navigation.fragment.findNavController
 import com.example.semsync.databinding.FragmentGroupsBinding
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
 import com.google.firebase.auth.FirebaseAuth
@@ -56,11 +55,6 @@ class GroupsFragment : Fragment() {
 
     private fun fetchUserGroups() {
         val userId = auth.currentUser?.uid ?: return
-
-        // Assume there's a 'members' array or subcollection or we query by 'members' array on the group
-        // For simplicity, let's assume groups have a 'members' array field containing userIds.
-        // Wait, looking at the Web interfaces, it usually uses a subcollection or array.
-        // Let's check how Web does it. It uses subscribeToUserGroups which queries 'groups' where 'members' array-contains userId.
         
         db.collection("groups")
             .whereArrayContains("members", userId)
@@ -96,10 +90,6 @@ class GroupsFragment : Fragment() {
             .show()
     }
 
-import com.google.firebase.messaging.FirebaseMessaging
-
-class GroupsFragment : Fragment() {
-// ... existing code ...
     private fun joinGroup(joinCode: String) {
         val userId = auth.currentUser?.uid ?: return
 
@@ -107,7 +97,7 @@ class GroupsFragment : Fragment() {
             .whereEqualTo("joinCode", joinCode)
             .get()
             .addOnSuccessListener { documents ->
-                if (documents.isEmpty) {
+                if (documents.isEmpty()) {
                     Toast.makeText(context, "Invalid join code", Toast.LENGTH_SHORT).show()
                 } else {
                     val groupDoc = documents.documents[0]
@@ -159,7 +149,8 @@ class GroupsFragment : Fragment() {
                     putString("groupId", group.id)
                     putString("groupName", group.name)
                 }
-                findNavController().navigate(R.id.navigation_group_detail, bundle)
+                // This navigation destination needs to be created.
+                // findNavController().navigate(R.id.navigation_group_detail, bundle)
             }
         }
 
