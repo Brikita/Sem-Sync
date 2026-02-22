@@ -59,18 +59,24 @@ class HomeFragment : Fragment() {
             .addOnSuccessListener { documents ->
                 val now = Calendar.getInstance().time
                 val upcomingClass = documents.map { it.toObject(TimetableEntry::class.java) }
-                    .firstOrNull { it.endTime?.toDate()?.after(now) == true }
+                    .firstOrNull { 
+                        it.endTime?.let { end -> Date(end).after(now) } == true 
+                    }
 
                 if (upcomingClass != null) {
                     binding.cardTodaysSchedule.visibility = View.VISIBLE
                     binding.tvScheduleUnitName.text = upcomingClass.unitName
                     binding.tvScheduleLocation.text = upcomingClass.location
                     binding.tvScheduleUnitCode.text = upcomingClass.unitCode
-                    val startTime = SimpleDateFormat("HH:mm", Locale.getDefault()).format(upcomingClass.startTime!!.toDate())
-                    val endTime = SimpleDateFormat("HH:mm", Locale.getDefault()).format(upcomingClass.endTime!!.toDate())
+                    val startTime = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(upcomingClass.startTime ?: 0))
+                    val endTime = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(upcomingClass.endTime ?: 0))
                     binding.tvScheduleTime.text = "$startTime\nto\n$endTime"
                 } else {
-                    binding.cardTodaysSchedule.visibility = View.GONE
+                    binding.cardTodaysSchedule.visibility = View.VISIBLE
+                    binding.tvScheduleUnitName.text = "No classes scheduled"
+                    binding.tvScheduleLocation.text = ""
+                    binding.tvScheduleUnitCode.text = ""
+                    binding.tvScheduleTime.text = ""
                 }
             }
     }
@@ -87,11 +93,11 @@ class HomeFragment : Fragment() {
             .addOnSuccessListener { documents ->
                 if (!documents.isEmpty) {
                     val task = documents.documents[0].toObject(Task::class.java)
-                    if (task != null) {
+                    if (task != null && task.dueDate != null) {
                         binding.cardTasksDueSoon.visibility = View.VISIBLE
                         binding.tvTaskTitle.text = task.title
                         // Calculate days until due or overdue
-                        val diff = task.dueDate!!.toDate().time - Calendar.getInstance().time.time
+                        val diff = task.dueDate - Calendar.getInstance().time.time
                         val days = diff / (1000 * 60 * 60 * 24)
                         binding.tvTaskDueDate.text = when {
                             days < -1 -> "${-days} days ago"
@@ -100,8 +106,12 @@ class HomeFragment : Fragment() {
                             days == 1L -> "Tomorrow"
                             else -> "in $days days"
                         }
+                    } else {
+                         // Task exists but might be missing dueDate or parsing failed
+                         binding.cardTasksDueSoon.visibility = View.GONE
                     }
                 } else {
+                    // No tasks found
                     binding.cardTasksDueSoon.visibility = View.GONE
                 }
             }

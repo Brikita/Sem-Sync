@@ -109,7 +109,7 @@ class GroupDetailFragment : Fragment() {
             authorId = user.uid,
             authorName = user.displayName ?: "Student",
             content = content,
-            createdAt = Timestamp.now(),
+            createdAt = System.currentTimeMillis(),
             type = "announcement"
         )
 
@@ -157,7 +157,7 @@ class GroupDetailFragment : Fragment() {
         override fun onBindViewHolder(holder: PostViewHolder, position: Int) {
             val post = posts[position]
             holder.authorName.text = post.authorName
-            holder.postDate.text = post.createdAt?.toDate()?.toString() ?: "Just now"
+            holder.postDate.text = post.createdAt?.let { java.util.Date(it).toString() } ?: "Just now"
             holder.postType.text = post.type.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
             holder.content.text = post.content
         }

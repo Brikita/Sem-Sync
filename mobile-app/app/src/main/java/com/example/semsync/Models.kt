@@ -19,7 +19,7 @@ data class GroupPost(
     val authorId: String = "",
     val authorName: String = "",
     val content: String = "",
-    val createdAt: Timestamp? = null,
+    val createdAt: Long? = null,
     val type: String = "announcement", // "announcement", "material", "urgent"
     val attachments: List<String> = emptyList()
 )
@@ -31,7 +31,7 @@ data class TimetableEntry(
     val unitName: String = "",
     val unitCode: String = "",
     val location: String = "",
-    val startTime: Timestamp? = null,
-    val endTime: Timestamp? = null,
+    val startTime: Long? = null,
+    val endTime: Long? = null,
     val dayOfWeek: String = ""
 )

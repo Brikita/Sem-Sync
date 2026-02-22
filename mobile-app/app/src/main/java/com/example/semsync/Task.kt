@@ -10,7 +10,7 @@ data class Task(
     val courseCode: String = "",
     val completed: Boolean = false,
     val priority: String = "medium",
-    val dueDate: Timestamp? = null,
+    val dueDate: Long? = null,
     val taskType: String = "personal", // "personal" or "academic"
     val createdAt: Long? = null,
     val status: String = "pending"
