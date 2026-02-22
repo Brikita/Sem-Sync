@@ -209,12 +209,10 @@ class TasksFragment : Fragment(R.layout.fragment_tasks) {
                     "completed" to false,
                     "userId" to uid,
                     "priority" to spinnerPriority.selectedItem.toString().lowercase(),
-                    "dueDate" to if (selectedDate != null) {
-                        com.google.firebase.Timestamp(java.util.Date(selectedDate!!))
-                    } else {
-                        null
-                    },
-                    "taskType" to if (inputCourseCode.text.toString().isNotEmpty()) "academic" else "personal"
+                    "dueDate" to selectedDate,
+                    "taskType" to if (inputCourseCode.text.toString().isNotEmpty()) "academic" else "personal",
+                    "createdAt" to System.currentTimeMillis(),
+                    "status" to "pending"
                 )
                 db.collection("tasks").add(newTask)
                 dialog.dismiss()
