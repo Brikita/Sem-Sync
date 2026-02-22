@@ -10,7 +10,7 @@ data class AcademicGroup(
     val lecturerName: String = "",
     val repId: String = "",
     val memberCount: Int = 0,
-    val createdAt: Timestamp? = null
+    val createdAt: Long? = null
 )
 
 data class GroupPost(
