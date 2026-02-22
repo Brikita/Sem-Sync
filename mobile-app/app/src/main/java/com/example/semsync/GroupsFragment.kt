@@ -6,12 +6,12 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
-import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.navigation.fragment.findNavController
 import com.example.semsync.databinding.FragmentGroupsBinding
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
 import com.google.firebase.auth.FirebaseAuth
@@ -42,7 +42,12 @@ class GroupsFragment : Fragment() {
         // Initialize RecyclerView
         val recyclerView = view.findViewById<RecyclerView>(R.id.recycler_view_groups)
         recyclerView.layoutManager = LinearLayoutManager(context)
-        adapter = GroupsAdapter(groups)
+        adapter = GroupsAdapter(groups) { group ->
+            val bundle = Bundle()
+            bundle.putString("groupId", group.id)
+            bundle.putString("groupName", group.name)
+            findNavController().navigate(R.id.navigation_group_detail, bundle)
+        }
         recyclerView.adapter = adapter
 
         // Join Groups FAB
@@ -121,40 +126,6 @@ class GroupsFragment : Fragment() {
             .addOnFailureListener {
                 Toast.makeText(context, "Error finding group", Toast.LENGTH_SHORT).show()
             }
-    }
-
-    inner class GroupsAdapter(private val groups: List<AcademicGroup>) :
-        RecyclerView.Adapter<GroupsAdapter.GroupViewHolder>() {
-
-        inner class GroupViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-            val nameText: TextView = itemView.findViewById(R.id.text_group_name)
-            val codeText: TextView = itemView.findViewById(R.id.text_group_code)
-            val lecturerText: TextView = itemView.findViewById(R.id.text_lecturer_name)
-        }
-
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): GroupViewHolder {
-            val view = LayoutInflater.from(parent.context)
-                .inflate(R.layout.item_group, parent, false)
-            return GroupViewHolder(view)
-        }
-
-        override fun onBindViewHolder(holder: GroupViewHolder, position: Int) {
-            val group = groups[position]
-            holder.nameText.text = group.name
-            holder.codeText.text = "Code: ${group.code}"
-            holder.lecturerText.text = "Lecturer: ${group.lecturerName}"
-            
-            holder.itemView.setOnClickListener {
-                val bundle = Bundle().apply {
-                    putString("groupId", group.id)
-                    putString("groupName", group.name)
-                }
-                // This navigation destination needs to be created.
-                // findNavController().navigate(R.id.navigation_group_detail, bundle)
-            }
-        }
-
-        override fun getItemCount() = groups.size
     }
 
     override fun onDestroyView() {
