@@ -62,20 +62,46 @@ class AnnouncementCheckWorker(appContext: Context, workerParams: WorkerParameter
             // For now, iterate (watch out for read limits on large scale, OK for prototype)
             for (groupDoc in groupsSnapshot) {
                 val groupName = groupDoc.getString("name") ?: "Group"
-                
-                val postsSnapshot = groupDoc.reference.collection("posts")
-                    .whereGreaterThan("createdAt", checkTimestamp) // Assuming createdAt is Timestamp
+
+                // Track processed posts to avoid double counting when they have both fields
+                val processedPostIds = mutableSetOf<String>()
+
+                // First, check posts using the "timestamp" field
+                val timestampPostsSnapshot = groupDoc.reference.collection("posts")
+                    .whereGreaterThan("timestamp", checkTimestamp)
                     .limit(5)
                     .get()
                     .await()
-                
-                for (postDoc in postsSnapshot) {
-                    val authorId = postDoc.getString("authorId")
-                    if (authorId != userId) { // Don't notify about own posts
-                        newAnnouncementCount++
-                        if (exampleTitle.isEmpty()) {
-                            exampleTitle = postDoc.getString("content") ?: "New Content"
-                            exampleGroup = groupName
+
+                for (postDoc in timestampPostsSnapshot) {
+                    if (processedPostIds.add(postDoc.id)) {
+                        val authorId = postDoc.getString("authorId")
+                        if (authorId != userId) { // Don't notify about own posts
+                            newAnnouncementCount++
+                            if (exampleTitle.isEmpty()) {
+                                exampleTitle = postDoc.getString("content") ?: "New Content"
+                                exampleGroup = groupName
+                            }
+                        }
+                    }
+                }
+
+                // Then, check posts using the "createdAt" field as a fallback
+                val createdAtPostsSnapshot = groupDoc.reference.collection("posts")
+                    .whereGreaterThan("createdAt", checkTimestamp)
+                    .limit(5)
+                    .get()
+                    .await()
+
+                for (postDoc in createdAtPostsSnapshot) {
+                    if (processedPostIds.add(postDoc.id)) {
+                        val authorId = postDoc.getString("authorId")
+                        if (authorId != userId) { // Don't notify about own posts
+                            newAnnouncementCount++
+                            if (exampleTitle.isEmpty()) {
+                                exampleTitle = postDoc.getString("content") ?: "New Content"
+                                exampleGroup = groupName
+                            }
                         }
                     }
                 }
@@ -134,6 +160,6 @@ class AnnouncementCheckWorker(appContext: Context, workerParams: WorkerParameter
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
 
-        notificationManager.notify(1001, builder.build())
+        notificationManager.notify(System.currentTimeMillis().toInt(), builder.build())
     }
 }
