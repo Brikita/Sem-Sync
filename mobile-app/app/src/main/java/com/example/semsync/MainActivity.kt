@@ -79,6 +79,9 @@ class MainActivity : AppCompatActivity() {
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()
 
+        // Note: WorkManager enforces 15 minutes as the *minimum* interval for periodic work.
+        // The actual execution time may be later than 15 minutes because of Doze mode
+        // and battery optimizations, so this should not be treated as an exact schedule.
         val periodicWorkRequest = PeriodicWorkRequestBuilder<AnnouncementCheckWorker>(15, TimeUnit.MINUTES)
             .setConstraints(constraints)
             .build()

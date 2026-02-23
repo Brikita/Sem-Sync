@@ -5,7 +5,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
-import com.example.semsync.R
 
 class AnnouncementsAdapter(private val items: List<EnrichedPost>) : RecyclerView.Adapter<AnnouncementsAdapter.ViewHolder>() {
     

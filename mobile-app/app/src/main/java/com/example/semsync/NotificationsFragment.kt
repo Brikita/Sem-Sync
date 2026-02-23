@@ -1,6 +1,7 @@
 package com.example.semsync
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -89,7 +90,7 @@ class NotificationsFragment : Fragment() {
                                 }
                             }
                         } catch (e2: Exception) {
-                            // ignore
+                            Log.e("NotificationsFragment", "Failed to fetch posts for group $groupName", e2)
                         }
                     }
                 }

@@ -159,34 +159,28 @@ class HomeFragment : Fragment() {
     }
 
     private fun updateDashboardSchedule(todayUnits: List<TimetableEntry>, tomorrowUnits: List<TimetableEntry>) {
-        // Use a heuristic to parse class times.
-        // Assume classes are between 7 AM and 9 PM.
-        // If time is 01:00 - 06:59, treat as PM (13:00 - 18:59).
-        // If time is 07:00 - 11:59, treat as AM.
-        // If time is 12:00 - 12:59, treat as PM.
+        // Parse class times assuming a 24-hour "HH:mm" format (e.g. "08:30", "13:15").
+        // Returns the number of minutes since midnight, or -1 if the time string is invalid.
         fun parseClassTime(timeStr: String): Int {
             if (timeStr.isBlank()) return -1
-            try {
-                // Try to split logic
+            return try {
                 val parts = timeStr.trim().split(":")
                 if (parts.size >= 2) {
-                    var hour = parts[0].toInt()
+                    val hour = parts[0].toInt()
                     val minute = parts[1].take(2).toInt() // Handle potential seconds or suffixes
-                    
-                    // Specific logic for 12-hour format without AM/PM
-                    if (hour in 1..6) {
-                        hour += 12 // 1:00 -> 13:00 (1 PM)
+
+                    // Validate that the parsed hour and minute are within 24-hour clock bounds.
+                    if (hour !in 0..23 || minute !in 0..59) {
+                        -1
+                    } else {
+                        hour * 60 + minute
                     }
-                    // 7,8,9,10,11 remain AM
-                    // 12 remains 12 PM
-                    // 13+ remains PM (if they used 24h)
-                    
-                    return hour * 60 + minute
+                } else {
+                    -1
                 }
             } catch (e: Exception) {
-                return -1
+                -1
             }
-            return -1
         }
 
         val calendar = Calendar.getInstance()
@@ -383,7 +377,7 @@ class HomeFragment : Fragment() {
         val sortedPosts = posts.sortedByDescending { 
              val timestamp = it.post.timestamp ?: it.post.createdAt
              timestamp?.toDate()?.time ?: 0L 
-        }.take(5) // Show top 5 ASC (Latest first)
+        }.take(5) // Show top 5 latest (newest first)
             
         if (sortedPosts.isNotEmpty()) {
             binding.recyclerAnnouncements.visibility = View.VISIBLE

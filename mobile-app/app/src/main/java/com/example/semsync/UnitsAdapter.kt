@@ -44,18 +44,22 @@ class UnitsAdapter(
         if (unit.schedule.isNotEmpty()) {
             val sched = unit.schedule[0]
             if (sched.startTime.isNotBlank()) {
-                 holder.time.text = "${sched.day} • ${sched.startTime} - ${sched.endTime}"
-                 holder.location.text = sched.location
-                 if (unit.schedule.size > 1) {
-                     holder.time.append(" (+${unit.schedule.size - 1} more)")
-                 }
+                val baseTimeText = "${sched.day} • ${sched.startTime} - ${sched.endTime}"
+                val extraCount = unit.schedule.size - 1
+                val timeText = if (extraCount > 0) {
+                    "$baseTimeText (+$extraCount more)"
+                } else {
+                    baseTimeText
+                }
+                holder.time.text = timeText
+                holder.location.text = sched.location
             } else {
-                 holder.time.text = "No Schedule"
-                 holder.location.text = "TBA"
+                holder.time.text = "No Schedule"
+                holder.location.text = "TBA"
             }
         } else {
-             holder.time.text = "No Schedule"
-             holder.location.text = "TBA"
+            holder.time.text = "No Schedule"
+            holder.location.text = "TBA"
         }
     }
 
