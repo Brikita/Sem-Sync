@@ -47,4 +47,9 @@
         android:name="com.example.semsync.NotebookFragment"
         android:label="NotebookFragment"
         tools:layout="@layout/fragment_notebook" />
+    <fragment
+        android:id="@+id/navigation_notifications"
+        android:name="com.example.semsync.NotificationsFragment"
+        android:label="Notifications"
+        tools:layout="@layout/fragment_notifications" />
 </navigation>
