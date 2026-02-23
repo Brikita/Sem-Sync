@@ -6,6 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.fragment.app.Fragment
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.semsync.databinding.FragmentHomeBinding
@@ -63,7 +64,7 @@ class HomeFragment : Fragment() {
         }
 
         binding.btnNotifications.setOnClickListener {
-           // TODO: Notifications screen
+           findNavController().navigate(R.id.navigation_notifications)
         }
 
         binding.btnProfile.setOnClickListener {
@@ -158,19 +159,45 @@ class HomeFragment : Fragment() {
     }
 
     private fun updateDashboardSchedule(todayUnits: List<TimetableEntry>, tomorrowUnits: List<TimetableEntry>) {
-        val nowTime = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
-        val days = listOf("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
+        // Parse class times assuming a 24-hour "HH:mm" format (e.g. "08:30", "13:15").
+        // Returns the number of minutes since midnight, or -1 if the time string is invalid.
+        fun parseClassTime(timeStr: String): Int {
+            if (timeStr.isBlank()) return -1
+            return try {
+                val parts = timeStr.trim().split(":")
+                if (parts.size >= 2) {
+                    val hour = parts[0].toInt()
+                    val minute = parts[1].take(2).toInt() // Handle potential seconds or suffixes
+
+                    // Validate that the parsed hour and minute are within 24-hour clock bounds.
+                    if (hour !in 0..23 || minute !in 0..59) {
+                        -1
+                    } else {
+                        hour * 60 + minute
+                    }
+                } else {
+                    -1
+                }
+            } catch (e: Exception) {
+                -1
+            }
+        }
+
         val calendar = Calendar.getInstance()
+        val currentMinutes = calendar.get(Calendar.HOUR_OF_DAY) * 60 + calendar.get(Calendar.MINUTE)
+
+        val days = listOf("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
         val todayIndex = calendar.get(Calendar.DAY_OF_WEEK) - 1
         val todayName = days[todayIndex]
         
-        // Sort by start time
-        val sortedToday = todayUnits.sortedBy { it.startTime }
-        val sortedTomorrow = tomorrowUnits.sortedBy { it.startTime }
+        // Sort using parsed time
+        val sortedToday = todayUnits.sortedBy { parseClassTime(it.startTime) }
+        val sortedTomorrow = tomorrowUnits.sortedBy { parseClassTime(it.startTime) }
 
-        // Find the first upcoming class today (endTime > nowTime)
+        // Find first class that hasn't ended yet
         val upcomingClass = sortedToday.firstOrNull { 
-            it.endTime > nowTime
+            val endMinutes = parseClassTime(it.endTime)
+            endMinutes > currentMinutes
         }
 
         binding.cardTodaysSchedule.visibility = View.VISIBLE
@@ -182,7 +209,21 @@ class HomeFragment : Fragment() {
             binding.tvScheduleLocation.text = upcomingClass.location
             binding.tvScheduleUnitCode.text = upcomingClass.unitCode
             binding.tvScheduleTime.text = "${upcomingClass.startTime} - ${upcomingClass.endTime}"
-            binding.tvScheduleGroup.text = "Today"
+            
+            // Check if there are MORE classes today
+            val endMinutes = parseClassTime(upcomingClass.endTime)
+            // Logic: count how many classes start AFTER this one ends? Or just remaining in list?
+            // Simple logic: count classes whose end time is in future, minus the current one we are showing.
+            // Or better: count classes in the sorted list that appear AFTER the upcomingClass index
+            val index = sortedToday.indexOf(upcomingClass)
+            val remaining = sortedToday.size - 1 - index
+            
+            if (remaining > 0) {
+                binding.tvScheduleGroup.text = "+$remaining more"
+            } else {
+                binding.tvScheduleGroup.text = "Next Class"
+            }
+            
         } else if (sortedTomorrow.isNotEmpty()) {
             // Case 2: No more classes today, show tomorrow
             val nextClass = sortedTomorrow.first()
@@ -194,7 +235,12 @@ class HomeFragment : Fragment() {
             binding.tvScheduleLocation.text = nextClass.location
             binding.tvScheduleUnitCode.text = nextClass.unitCode
             binding.tvScheduleTime.text = "${nextClass.startTime} - ${nextClass.endTime}"
-            binding.tvScheduleGroup.text = "Tomorrow"
+            
+            if (sortedTomorrow.size > 1) {
+                binding.tvScheduleGroup.text = "+${sortedTomorrow.size - 1} more"
+            } else {
+                binding.tvScheduleGroup.text = "First Class"
+            }
         } else {
             // Case 3: No classes today or tomorrow
             binding.tvScheduleTitle.text = "Schedule"
@@ -213,28 +259,37 @@ class HomeFragment : Fragment() {
             .whereEqualTo("userId", userId)
             .whereEqualTo("completed", false)
             .orderBy("dueDate", Query.Direction.ASCENDING)
-            .limit(1)
+            .limit(3) // Increased from 1 to 3
             .get()
             .addOnSuccessListener { documents ->
                 if (!documents.isEmpty) {
-                    val task = documents.documents[0].toObject(Task::class.java)
-                    if (task != null && task.dueDate != null) {
+                    val taskList = documents.toObjects(Task::class.java)
+                    
+                    if (taskList.isNotEmpty()) {
                         binding.cardTasksDueSoon.visibility = View.VISIBLE
-                        binding.tvTaskTitle.text = task.title
-                        // Calculate days until due or overdue
-                        val diff = task.dueDate - Calendar.getInstance().time.time
-                        val days = diff / (1000 * 60 * 60 * 24)
-                        binding.tvTaskDueDate.text = when {
-                            days < -1 -> "${-days} days ago"
-                            days == -1L -> "Yesterday"
-                            days == 0L -> "Today"
-                            days == 1L -> "Tomorrow"
-                            else -> "in $days days"
+                        // For now we just bind the first one since UI is single card
+                        // TODO: Update UI to show list?
+                        val task = taskList[0]
+                        if (task != null && task.dueDate != null) {
+                            binding.tvTaskTitle.text = task.title
+                            if (taskList.size > 1) {
+                                binding.tvTaskTitle.text = "${task.title} (+${taskList.size - 1} more)"
+                            }
+                            
+                            // Calculate days until due or overdue
+                            val diff = task.dueDate - Calendar.getInstance().time.time
+                            val days = diff / (1000 * 60 * 60 * 24)
+                            binding.tvTaskDueDate.text = when {
+                                days < -1 -> "${-days} days ago"
+                                days == -1L -> "Yesterday"
+                                days == 0L -> "Today"
+                                days == 1L -> "Tomorrow"
+                                else -> "in $days days"
+                            }
+                        } else {
+                            binding.cardTasksDueSoon.visibility = View.GONE
                         }
-                    } else {
-                         // Task exists but might be missing dueDate or parsing failed
-                         binding.cardTasksDueSoon.visibility = View.GONE
-                    }
+                    } 
                 } else {
                     // No tasks found
                     binding.cardTasksDueSoon.visibility = View.GONE
@@ -260,8 +315,10 @@ class HomeFragment : Fragment() {
                 for (groupDoc in groupDocs) {
                     val groupName = groupDoc.getString("name") ?: "Group"
                     
+                    // Fetch recent posts - Order by multiple fields to ensure index usage if needed
+                    // Use limit 3 to grab a few recent ones
                     groupDoc.reference.collection("posts")
-                        .orderBy("createdAt", Query.Direction.DESCENDING)
+                        .orderBy("timestamp", Query.Direction.DESCENDING) // Primary timestamp field
                         .limit(3)
                         .get()
                         .addOnSuccessListener { postDocs ->
@@ -276,10 +333,28 @@ class HomeFragment : Fragment() {
                             }
                         }
                         .addOnFailureListener {
-                            pendingFetches--
-                            if (pendingFetches == 0) {
-                                updateAnnouncementsUI(allPosts)
-                            }
+                            // If timestamp fails (e.g. older index), try createdAt
+                             groupDoc.reference.collection("posts")
+                                .orderBy("createdAt", Query.Direction.DESCENDING)
+                                .limit(3)
+                                .get()
+                                .addOnSuccessListener { retryDocs ->
+                                    if (_binding == null) return@addOnSuccessListener
+                                    for (retryDoc in retryDocs) {
+                                        val post = retryDoc.toObject(GroupPost::class.java)
+                                        allPosts.add(EnrichedPost(post, groupName))
+                                    }
+                                    pendingFetches--
+                                    if (pendingFetches == 0) {
+                                        updateAnnouncementsUI(allPosts)
+                                    }
+                                }
+                                .addOnFailureListener {
+                                    pendingFetches--
+                                    if (pendingFetches == 0) {
+                                        updateAnnouncementsUI(allPosts)
+                                    }
+                                }
                         }
                 }
             }
@@ -294,10 +369,15 @@ class HomeFragment : Fragment() {
         if (_binding == null) return
         
         // Sort manually since we fetched from multiple collections
+        // User requested "latest ones at the top". 
+        // Previously they said "earliest result are at top" (e.g. sortedBy ASC?)
+        // The previous code was sortedByDescending (DESC), which IS "latest at top".
+        // HOWEVER, if they are seeing "Oldest -> Newest", then sortedByDescending should be correct for "Newest -> Oldest".
+        // Let's ensure we are using the timestamp correctly.
         val sortedPosts = posts.sortedByDescending { 
-            // Handle Timestamp conversion safely
-            it.post.createdAt?.toDate()?.time ?: 0L 
-        }.take(5) // Show top 5
+             val timestamp = it.post.timestamp ?: it.post.createdAt
+             timestamp?.toDate()?.time ?: 0L 
+        }.take(5) // Show top 5 latest (newest first)
             
         if (sortedPosts.isNotEmpty()) {
             binding.recyclerAnnouncements.visibility = View.VISIBLE
@@ -308,8 +388,6 @@ class HomeFragment : Fragment() {
              binding.recyclerAnnouncements.adapter = AnnouncementsAdapter(emptyList())
         }
     }
-
-    data class EnrichedPost(val post: GroupPost, val groupName: String)
 
     private fun setupRecyclerViews() {
         binding.recyclerRecentNotes.layoutManager = LinearLayoutManager(context)
@@ -343,45 +421,5 @@ class NotesAdapter(private val items: List<Any>) : RecyclerView.Adapter<NotesAda
         return ViewHolder(view)
     }
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {}
-    override fun getItemCount() = items.size
-}
-
-class AnnouncementsAdapter(private val items: List<HomeFragment.EnrichedPost>) : RecyclerView.Adapter<AnnouncementsAdapter.ViewHolder>() {
-    
-    class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val groupName: TextView = view.findViewById(R.id.text_group_name)
-        val authorName: TextView = view.findViewById(R.id.text_author_name)
-        val postTime: TextView = view.findViewById(R.id.text_post_time)
-        val content: TextView = view.findViewById(R.id.text_post_content)
-    }
-
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-        val view = LayoutInflater.from(parent.context).inflate(R.layout.item_announcement_preview, parent, false)
-        return ViewHolder(view)
-    }
-    
-    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        val item = items[position]
-        holder.groupName.text = item.groupName
-        holder.authorName.text = item.post.authorName
-        holder.content.text = item.post.content
-        
-        // Time formatting
-        // Convert timestamp to milliseconds
-        val createdTime = item.post.createdAt?.toDate()?.time ?: 0L
-        val timeDiff = System.currentTimeMillis() - createdTime
-        val seconds = timeDiff / 1000
-        val minutes = seconds / 60
-        val hours = minutes / 60
-        val days = hours / 24
-        
-        holder.postTime.text = when {
-            days > 0 -> "${days}d ago"
-            hours > 0 -> "${hours}h ago"
-            minutes > 0 -> "${minutes}m ago"
-            else -> "Just now"
-        }
-    }
-    
     override fun getItemCount() = items.size
 }
