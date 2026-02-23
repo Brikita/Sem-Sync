@@ -58,3 +58,8 @@ data class UnitSchedule(
     val endTime: String = "",
     val location: String = ""
 )
+
+data class EnrichedPost(
+    val post: GroupPost,
+    val groupName: String
+)
